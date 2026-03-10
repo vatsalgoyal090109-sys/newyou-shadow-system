@@ -3682,25 +3682,15 @@ function BodyAICoach({ state }) {
     setKeyStatus('checking');
     setKeyError('');
     try {
-      const proxyUrl = getAIProxy();
-      const endpoint = proxyUrl
-        ? proxyUrl.replace(/\/$/, '')
-        : 'https://api.anthropic.com/v1/messages';
-      const hdrs = { 'Content-Type': 'application/json', 'x-api-key': testKey };
-      if (!proxyUrl) {
-        hdrs['anthropic-version'] = '2023-06-01';
-        hdrs['anthropic-dangerous-direct-browser-access'] = 'true';
-      }
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 5,
-          messages: [{ role: 'user', content: 'Hi' }],
-        }),
-      });
-      if (res.ok || res.status === 200) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] }),
+        }
+      );
+      if (res.ok) {
         setKeyStatus('ok');
       } else {
         const d = await res.json().catch(() => ({}));
@@ -3742,27 +3732,7 @@ function BodyAICoach({ state }) {
     setLoading(true);
 
     try {
-      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
-      const proxyUrl = getAIProxy();
-      const endpoint = proxyUrl
-        ? proxyUrl.replace(/\/$/, '')  // use proxy, no special headers needed
-        : 'https://api.anthropic.com/v1/messages';
-
-      const headers = { 'Content-Type': 'application/json' };
-      if (!proxyUrl) {
-        // Direct call — need these headers
-        headers['anthropic-version'] = '2023-06-01';
-        headers['anthropic-dangerous-direct-browser-access'] = 'true';
-      }
-      if (key) { headers['x-api-key'] = key; }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: `You are a world-class AI fitness coach, sports nutritionist, and physique analyst embedded inside a gamified self-improvement app called "New You — Shadow System". You have complete access to the user's hunter profile data below.
+      const systemPrompt = `You are a world-class AI fitness coach, sports nutritionist, and physique analyst embedded inside a gamified self-improvement app called "New You — Shadow System". You have complete access to the user's hunter profile data below.
 
 ${hunterCtx}
 
@@ -3772,15 +3742,32 @@ COACHING STYLE:
 - Reference their actual muscle data when relevant (e.g. "Your chest is Lv.3 but your triceps are Lv.0 — you NEED to fix this imbalance").
 - Use markdown formatting (bold headers, bullet lists) for structured responses.
 - Be honest about weaknesses — this user wants real feedback, not empty praise.
-- Keep responses focused and practical. No padding or filler.`,
-          messages: apiMessages,
-        })
-      });
+- Keep responses focused and practical. No padding or filler.`;
+
+      // Convert messages to Gemini format
+      // Gemini uses 'model' instead of 'assistant' for role
+      const geminiContents = newMessages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: geminiContents,
+            generationConfig: { maxOutputTokens: 1000 },
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        if (response.status === 401) {
-          setMessages(prev => [...prev, { role:'assistant', content:'⚠️ **Invalid API Key**\n\nYour Anthropic API key was rejected. Tap the 🔑 key icon above to update it.' }]);
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+          setMessages(prev => [...prev, { role:'assistant', content:'⚠️ **Invalid API Key**\n\nYour Gemini API key was rejected. Tap the 🔑 key icon above to update it.' }]);
           setShowKeyInput(true);
         } else {
           setMessages(prev => [...prev, { role:'assistant', content:`⚠️ **API Error ${response.status}**\n\n${errData.error?.message || 'Unknown error'}` }]);
@@ -3789,7 +3776,7 @@ COACHING STYLE:
       }
 
       const data = await response.json();
-      const reply = data.content?.map(c => c.text||'').join('') || 'No response received.';
+      const reply = data.candidates?.[0]?.content?.parts?.map(p => p.text||'').join('') || 'No response received.';
       setMessages(prev => [...prev, { role:'assistant', content: reply }]);
     } catch(err) {
       setMessages(prev => [...prev, { role:'assistant', content:`⚠️ **Connection Error**\n\n${err.message}\n\nCheck your internet connection and try again.` }]);
@@ -3835,7 +3822,7 @@ COACHING STYLE:
             <div className="cinzel" style={{ fontSize:15, color:'var(--violet)', marginBottom:8 }}>🔑 ANTHROPIC API KEY</div>
             <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:16, lineHeight:1.7 }}>
               Required in APK to use AI Coach.<br/>
-              Get yours free at <span style={{ color:'var(--mana)' }}>console.anthropic.com</span><br/>
+              Get yours free at <span style={{ color:'var(--mana)' }}>aistudio.google.com</span><br/>
               <span style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>Saved only on your device. Never uploaded.</span>
             </div>
 
@@ -3846,7 +3833,7 @@ COACHING STYLE:
               value={keyDraft}
               onChange={e=>{ setKeyDraft(e.target.value); setKeyStatus(null); setKeyError(''); }}
               onKeyDown={e=>e.key==='Enter' && saveKey()}
-              placeholder="sk-ant-api03-..."
+              placeholder="AIza..."
               style={{ marginBottom:10 }}
             />
 
@@ -6296,6 +6283,86 @@ function BgMusicPlayer({ state, dispatch }) {
   );
 }
 
+function AIKeyPanel({ showNotif }) {
+  const [keyVal, setKeyVal] = useState(() => getAIKey());
+  const [proxyVal, setProxyVal] = useState(() => getAIProxy());
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [proxyDraft, setProxyDraft] = useState('');
+  const [testStatus, setTestStatus] = useState(null);
+  const [testError, setTestError] = useState('');
+
+  const testKey = async (k) => {
+    const key = k || keyVal;
+    if (!key) return;
+    setTestStatus('checking'); setTestError('');
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{ parts:[{ text:'Hi' }] }] }) }
+      );
+      if (res.ok) { setTestStatus('ok'); }
+      else { const d = await res.json().catch(()=>({})); setTestStatus('fail'); setTestError(d.error?.message||`HTTP ${res.status}`); }
+    } catch(e) { setTestStatus('fail'); setTestError(e.message); }
+  };
+
+  return (
+    <div className="panel" style={{ padding:16, marginBottom:12 }}>
+      <div className="cinzel" style={{ fontSize:11, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>🤖 AI COACH — API KEY</div>
+      {!editing ? (
+        <div>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom: testStatus ? 10 : 0 }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, color: keyVal ? '#2ECC71' : 'var(--gold)', marginBottom:2 }}>{keyVal ? '🔑 Key saved' : '⚠️ No key — required in APK'}</div>
+              {keyVal && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4, fontFamily:'monospace' }}>{keyVal.slice(0,14)}••••••</div>}
+              <div style={{ fontSize:10, color:'var(--text-dim)', lineHeight:1.5 }}>Get yours free at aistudio.google.com</div>
+              {proxyVal && <div style={{ fontSize:10, color:'var(--mana)', marginTop:4 }}>🔀 Proxy: {proxyVal.slice(0,32)}{proxyVal.length>32?'...':''}</div>}
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
+              {keyVal && <button onClick={()=>testKey()} disabled={testStatus==='checking'} style={{ padding:'5px 10px', borderRadius:5, cursor:'pointer', border:'1px solid rgba(79,195,247,0.4)', background:'rgba(79,195,247,0.1)', color:'var(--mana)', fontSize:10, fontFamily:'Cinzel,serif' }}>{testStatus==='checking'?'...':'TEST'}</button>}
+              <button onClick={()=>{ setDraft(keyVal); setProxyDraft(proxyVal); setEditing(true); setTestStatus(null); }} style={{ padding:'5px 10px', borderRadius:5, cursor:'pointer', border:'1px solid rgba(79,195,247,0.4)', background:'rgba(79,195,247,0.08)', color:'var(--mana)', fontSize:10, fontFamily:'Cinzel,serif' }}>{keyVal?'CHANGE':'ADD KEY'}</button>
+              {keyVal && <button onClick={()=>{ clearAIKey(); setKeyVal(''); setTestStatus(null); showNotif('🔑 KEY CLEARED'); }} style={{ padding:'5px 10px', borderRadius:5, cursor:'pointer', border:'1px solid rgba(231,76,60,0.4)', background:'rgba(231,76,60,0.08)', color:'var(--crimson)', fontSize:10, fontFamily:'Cinzel,serif' }}>CLEAR</button>}
+            </div>
+          </div>
+          {testStatus && (
+            <div style={{ padding:'8px 12px', borderRadius:6, fontSize:11,
+              background: testStatus==='ok'?'rgba(46,204,113,0.1)':testStatus==='fail'?'rgba(231,76,60,0.1)':'rgba(79,195,247,0.06)',
+              border:`1px solid ${testStatus==='ok'?'rgba(46,204,113,0.4)':testStatus==='fail'?'rgba(231,76,60,0.4)':'rgba(79,195,247,0.3)'}`,
+              color: testStatus==='ok'?'#2ECC71':testStatus==='fail'?'var(--crimson)':'var(--mana)',
+              display:'flex', alignItems:'center', gap:8
+            }}>
+              <span>{testStatus==='checking'?'⏳':testStatus==='ok'?'✅':'❌'}</span>
+              <span>{testStatus==='checking'?'Testing...':testStatus==='ok'?'Key valid — AI Coach ready!':testError}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <input className="input-dark" type="password" value={draft} onChange={e=>{ setDraft(e.target.value); setTestStatus(null); }} placeholder="AIza..." style={{ marginBottom:8 }}/>
+          <label style={{ display:'block', fontSize:10, color:'var(--mana)', marginBottom:5, letterSpacing:1 }}>
+            🔀 PROXY URL <span style={{ color:'var(--text-dim)', fontFamily:'sans-serif', letterSpacing:0 }}>(optional)</span>
+          </label>
+          <input className="input-dark" value={proxyDraft} onChange={e=>setProxyDraft(e.target.value)} placeholder="https://my-proxy.workers.dev" style={{ marginBottom:10, fontSize:11 }}/>
+          {testStatus && (
+            <div style={{ padding:'7px 10px', borderRadius:6, fontSize:11, marginBottom:8,
+              background: testStatus==='ok'?'rgba(46,204,113,0.1)':testStatus==='fail'?'rgba(231,76,60,0.1)':'rgba(79,195,247,0.06)',
+              border:`1px solid ${testStatus==='ok'?'rgba(46,204,113,0.4)':testStatus==='fail'?'rgba(231,76,60,0.4)':'rgba(79,195,247,0.3)'}`,
+              color: testStatus==='ok'?'#2ECC71':testStatus==='fail'?'var(--crimson)':'var(--mana)'
+            }}>
+              {testStatus==='checking'?'⏳ Testing...':testStatus==='ok'?'✅ Valid — ready to save!':'❌ '+testError}
+            </div>
+          )}
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>testKey(draft)} disabled={!draft.trim()||testStatus==='checking'} style={{ padding:'8px 12px', borderRadius:6, cursor:'pointer', border:'1px solid rgba(79,195,247,0.4)', background:'rgba(79,195,247,0.1)', color:'var(--mana)', fontSize:10, fontFamily:'Cinzel,serif' }}>🔍 TEST</button>
+            <button onClick={()=>{ setAIKey(draft); setKeyVal(draft.trim()); if(proxyDraft.trim()){setAIProxy(proxyDraft);setProxyVal(proxyDraft.trim());}else{clearAIProxy();setProxyVal('');} setEditing(false); showNotif('🔑 SAVED'); }} disabled={!draft.trim()||testStatus==='checking'} style={{ flex:1, padding:'8px', borderRadius:6, cursor:'pointer', border:`1px solid ${testStatus==='ok'?'#2ECC71':'var(--mana)'}`, background: testStatus==='ok'?'rgba(46,204,113,0.15)':'rgba(79,195,247,0.15)', color: testStatus==='ok'?'#2ECC71':'var(--mana)', fontFamily:'Cinzel,serif', fontSize:11 }}>{testStatus==='ok'?'✓ SAVE':'SAVE'}</button>
+            <button onClick={()=>{ setEditing(false); setTestStatus(null); }} style={{ padding:'8px 14px', borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11 }}>✕</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsScreen({ state, dispatch, showNotif, sfx }) {
   const [notifTime, setNotifTime] = useState(state.notifications?.time || '08:00');
   const soundEnabled = state.soundEnabled !== false;
@@ -6420,93 +6487,7 @@ function SettingsScreen({ state, dispatch, showNotif, sfx }) {
         </div>
 
         {/* AI Coach API Key */}
-        {(() => {
-          const [keyVal, setKeyVal] = React.useState(() => getAIKey());
-          const [proxyVal, setProxyVal] = React.useState(() => getAIProxy());
-          const [editing, setEditing] = React.useState(false);
-          const [draft, setDraft] = React.useState('');
-          const [proxyDraft, setProxyDraft] = React.useState('');
-          const [testStatus, setTestStatus] = React.useState(null); // null|'checking'|'ok'|'fail'
-          const [testError, setTestError] = React.useState('');
-
-          const testKey = async (k) => {
-            const key = k || keyVal;
-            if (!key) return;
-            setTestStatus('checking'); setTestError('');
-            try {
-              const proxy = getAIProxy();
-              const endpoint = proxy ? proxy.replace(/\/$/, '') : 'https://api.anthropic.com/v1/messages';
-              const hdrs = { 'Content-Type': 'application/json', 'x-api-key': key };
-              if (!proxy) { hdrs['anthropic-version']='2023-06-01'; hdrs['anthropic-dangerous-direct-browser-access']='true'; }
-              const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: hdrs,
-                body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:5, messages:[{role:'user',content:'Hi'}] }),
-              });
-              if (res.ok) { setTestStatus('ok'); }
-              else { const d = await res.json().catch(()=>({})); setTestStatus('fail'); setTestError(d.error?.message||`HTTP ${res.status}`); }
-            } catch(e) { setTestStatus('fail'); setTestError(e.message); }
-          };
-
-          return (
-          <div className="panel" style={{ padding:16, marginBottom:12 }}>
-            <div className="cinzel" style={{ fontSize:11, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>🤖 AI COACH — API KEY</div>
-            {!editing ? (
-              <div>
-                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom: testStatus ? 10 : 0 }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, color: keyVal ? '#2ECC71' : 'var(--gold)', marginBottom:2 }}>{keyVal ? '🔑 Key saved' : '⚠️ No key — required in APK'}</div>
-                    {keyVal && <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4, fontFamily:'monospace' }}>{keyVal.slice(0,14)}••••••</div>}
-                    <div style={{ fontSize:10, color:'var(--text-dim)', lineHeight:1.5 }}>Get yours at console.anthropic.com — stored only on device.</div>
-                    {proxyVal && <div style={{ fontSize:10, color:'var(--mana)', marginTop:4 }}>🔀 Proxy: {proxyVal.slice(0,32)}{proxyVal.length>32?'...':''}</div>}
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
-                    {keyVal && <button onClick={()=>testKey()} disabled={testStatus==='checking'} style={{ padding:'5px 10px', borderRadius:5, cursor:'pointer', border:'1px solid rgba(79,195,247,0.4)', background:'rgba(79,195,247,0.1)', color:'var(--mana)', fontSize:10, fontFamily:'Cinzel,serif' }}>{testStatus==='checking'?'...':'TEST'}</button>}
-                    <button onClick={()=>{ setDraft(keyVal); setEditing(true); setTestStatus(null); }} style={{ padding:'5px 10px', borderRadius:5, cursor:'pointer', border:'1px solid rgba(79,195,247,0.4)', background:'rgba(79,195,247,0.08)', color:'var(--mana)', fontSize:10, fontFamily:'Cinzel,serif' }}>{keyVal?'CHANGE':'ADD KEY'}</button>
-                    {keyVal && <button onClick={()=>{ clearAIKey(); setKeyVal(''); setTestStatus(null); showNotif('🔑 KEY CLEARED'); }} style={{ padding:'5px 10px', borderRadius:5, cursor:'pointer', border:'1px solid rgba(231,76,60,0.4)', background:'rgba(231,76,60,0.08)', color:'var(--crimson)', fontSize:10, fontFamily:'Cinzel,serif' }}>CLEAR</button>}
-                  </div>
-                </div>
-                {testStatus && (
-                  <div style={{ padding:'8px 12px', borderRadius:6, fontSize:11,
-                    background: testStatus==='ok'?'rgba(46,204,113,0.1)':testStatus==='fail'?'rgba(231,76,60,0.1)':'rgba(79,195,247,0.06)',
-                    border:`1px solid ${testStatus==='ok'?'rgba(46,204,113,0.4)':testStatus==='fail'?'rgba(231,76,60,0.4)':'rgba(79,195,247,0.3)'}`,
-                    color: testStatus==='ok'?'#2ECC71':testStatus==='fail'?'var(--crimson)':'var(--mana)',
-                    display:'flex', alignItems:'center', gap:8
-                  }}>
-                    <span>{testStatus==='checking'?'⏳':testStatus==='ok'?'✅':'❌'}</span>
-                    <span>{testStatus==='checking'?'Testing connection...':testStatus==='ok'?'API key is valid — AI Coach will work!':testError}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <input className="input-dark" type="password" value={draft} onChange={e=>{ setDraft(e.target.value); setTestStatus(null); }} placeholder="sk-ant-api03-..." style={{ marginBottom:8 }}/>
-                <label style={{ display:'block', fontSize:10, color:'var(--mana)', marginBottom:5, letterSpacing:1 }}>
-                  🔀 PROXY URL <span style={{ color:'var(--text-dim)', fontFamily:'sans-serif', letterSpacing:0 }}>(optional — use for APK if direct fails)</span>
-                </label>
-                <input className="input-dark" value={proxyDraft} onChange={e=>setProxyDraft(e.target.value)} placeholder="https://my-proxy.workers.dev" style={{ marginBottom:8, fontSize:11 }}/>
-                <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:10, lineHeight:1.5 }}>
-                  Deploy the free Cloudflare Worker proxy from Settings → AI Coach guide to fix CORS in your APK. Leave blank for direct calls.
-                </div>
-                {testStatus && (
-                  <div style={{ padding:'7px 10px', borderRadius:6, fontSize:11, marginBottom:8,
-                    background: testStatus==='ok'?'rgba(46,204,113,0.1)':testStatus==='fail'?'rgba(231,76,60,0.1)':'rgba(79,195,247,0.06)',
-                    border:`1px solid ${testStatus==='ok'?'rgba(46,204,113,0.4)':testStatus==='fail'?'rgba(231,76,60,0.4)':'rgba(79,195,247,0.3)'}`,
-                    color: testStatus==='ok'?'#2ECC71':testStatus==='fail'?'var(--crimson)':'var(--mana)'
-                  }}>
-                    {testStatus==='checking'?'⏳ Testing...':testStatus==='ok'?'✅ Valid — ready to save!':'❌ '+testError}
-                  </div>
-                )}
-                <div style={{ display:'flex', gap:8 }}>
-                  <button onClick={()=>testKey(draft)} disabled={!draft.trim()||testStatus==='checking'} style={{ padding:'8px 12px', borderRadius:6, cursor:'pointer', border:'1px solid rgba(79,195,247,0.4)', background:'rgba(79,195,247,0.1)', color:'var(--mana)', fontSize:10, fontFamily:'Cinzel,serif' }}>🔍 TEST</button>
-                  <button onClick={()=>{ setAIKey(draft); setKeyVal(draft.trim()); if(proxyDraft.trim()){setAIProxy(proxyDraft);setProxyVal(proxyDraft.trim());}else{clearAIProxy();setProxyVal('');} setEditing(false); showNotif('🔑 SAVED'); }} disabled={!draft.trim()||testStatus==='checking'} style={{ flex:1, padding:'8px', borderRadius:6, cursor:'pointer', border:`1px solid ${testStatus==='ok'?'#2ECC71':'var(--mana)'}`, background: testStatus==='ok'?'rgba(46,204,113,0.15)':'rgba(79,195,247,0.15)', color: testStatus==='ok'?'#2ECC71':'var(--mana)', fontFamily:'Cinzel,serif', fontSize:11 }}>{testStatus==='ok'?'✓ SAVE':'SAVE'}</button>
-                  <button onClick={()=>{ setEditing(false); setTestStatus(null); }} style={{ padding:'8px 14px', borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:11 }}>CANCEL</button>
-                </div>
-              </div>
-            )}
-          </div>
-          );
-        })()}
+        <AIKeyPanel showNotif={showNotif} />
 
         {/* Sound */}
         <div className="panel" style={{ padding:16, marginBottom:12 }}>
