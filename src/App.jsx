@@ -2022,6 +2022,35 @@ function StatusScreen({ state, dispatch, addXP }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // QUESTS SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
+// ─── CONFIRM MODAL ──────────────────────────────────────────────────────────
+function ConfirmModal({ config, onConfirm, onCancel }) {
+  if (!config) return null;
+  const isDestruct = config.type === 'danger';
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:999, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+      <div style={{ background:'var(--panel)', border:`1px solid ${isDestruct?'rgba(231,76,60,0.5)':'rgba(79,195,247,0.3)'}`, borderRadius:14, padding:24, width:'100%', maxWidth:340, textAlign:'center' }}>
+        <div style={{ fontSize:36, marginBottom:12 }}>{config.icon || (isDestruct ? '⚠️' : '❓')}</div>
+        <div className="cinzel" style={{ fontSize:14, color: isDestruct?'var(--crimson)':'var(--mana)', marginBottom:8, letterSpacing:1 }}>{config.title}</div>
+        <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:20, lineHeight:1.6 }}>{config.message}</div>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onCancel} style={{
+            flex:1, padding:'10px', borderRadius:8, cursor:'pointer',
+            border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)',
+            color:'var(--text-dim)', fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:1
+          }}>CANCEL</button>
+          <button onClick={onConfirm} style={{
+            flex:1, padding:'10px', borderRadius:8, cursor:'pointer',
+            border:`1px solid ${isDestruct?'var(--crimson)':'var(--mana)'}`,
+            background: isDestruct?'rgba(231,76,60,0.15)':'rgba(79,195,247,0.15)',
+            color: isDestruct?'var(--crimson)':'var(--mana)',
+            fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:1, fontWeight:700
+          }}>{config.confirmLabel || 'CONFIRM'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) {
   const statDefs = getStatDefs(state);
   const [tab, setTab] = useState('daily');
@@ -2053,21 +2082,27 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
   };
   const removeSubFromNew = (id) => setNewQuest(p => ({...p, subQuests:p.subQuests.filter(s=>s.id!==id)}));
 
-  const failQuest = (q) => {
-    sfx('broken');
-    applyPenalty(q.xp, `Failed quest: ${q.name}`);
-    dispatch({ type:'DELETE_DAILY_QUEST', payload: q.id });
-  };
-  const failWeekly = (q) => {
-    sfx('broken');
-    applyPenalty(q.xp, `Failed weekly: ${q.name}`);
-    dispatch({ type:'DELETE_WEEKLY_QUEST', payload: q.id });
-  };
-  const failMain = (q) => {
-    sfx('broken');
-    applyPenalty(q.xp, `Failed main quest: ${q.name}`);
-    dispatch({ type:'DELETE_MAIN_QUEST', payload: q.id });
-  };
+  const [confirmCfg, setConfirmCfg] = useState(null);
+  const confirm = (cfg, onConfirm) => setConfirmCfg({ ...cfg, _onConfirm: onConfirm });
+  const handleConfirm = () => { if (confirmCfg?._onConfirm) confirmCfg._onConfirm(); setConfirmCfg(null); };
+
+  const failQuest = (q) => confirm({
+    type:'danger', icon:'💀', title:'FAIL QUEST?',
+    message: `"${q.name}" will be deleted and you will lose HP as penalty.`,
+    confirmLabel:'FAIL IT'
+  }, () => { sfx('broken'); applyPenalty(q.xp, `Failed quest: ${q.name}`); dispatch({ type:'DELETE_DAILY_QUEST', payload: q.id }); });
+
+  const failWeekly = (q) => confirm({
+    type:'danger', icon:'💀', title:'FAIL WEEKLY QUEST?',
+    message: `"${q.name}" will be deleted and you will lose HP as penalty.`,
+    confirmLabel:'FAIL IT'
+  }, () => { sfx('broken'); applyPenalty(q.xp, `Failed weekly: ${q.name}`); dispatch({ type:'DELETE_WEEKLY_QUEST', payload: q.id }); });
+
+  const failMain = (q) => confirm({
+    type:'danger', icon:'💀', title:'FAIL MAIN QUEST?',
+    message: `"${q.name}" will be deleted and you will lose HP as penalty.`,
+    confirmLabel:'FAIL IT'
+  }, () => { sfx('broken'); applyPenalty(q.xp, `Failed main quest: ${q.name}`); dispatch({ type:'DELETE_MAIN_QUEST', payload: q.id }); });
 
   const handleEditSave = (updates) => {
     const { questType } = editQuest;
@@ -2098,30 +2133,48 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
 
   const completeDaily = (q) => {
     if (q.completed) return;
-    dispatch({ type:'COMPLETE_DAILY_QUEST', payload:q.id });
     const totalXP = (q.subQuests||[]).length > 0 ? (q.subQuests||[]).reduce((a,s)=>a+(s.xp||0),0) : q.xp;
-    addXP(totalXP, 'quest');
-    sfx('questComplete');
-    const msgs = ['QUEST CLEARED'];
-    if (q.statReward) msgs.push(`+${q.statAmount||1} ${q.statReward.toUpperCase().slice(0,3)}`);
-    if (q.rewardId) msgs.push('🎁 REWARD EARNED');
-    showNotif(msgs.join(' · '));
+    confirm({
+      type:'confirm', icon:'⚔️', title:'COMPLETE QUEST?',
+      message: `"${q.name}" — mark as complete and claim +${totalXP} XP?`,
+      confirmLabel:'COMPLETE'
+    }, () => {
+      dispatch({ type:'COMPLETE_DAILY_QUEST', payload:q.id });
+      addXP(totalXP, 'quest');
+      sfx('questComplete');
+      const msgs = ['QUEST CLEARED'];
+      if (q.statReward) msgs.push(`+${q.statAmount||1} ${q.statReward.toUpperCase().slice(0,3)}`);
+      if (q.rewardId) msgs.push('🎁 REWARD EARNED');
+      showNotif(msgs.join(' · '));
+    });
   };
   const completeWeekly = (q) => {
     if (q.completed) return;
-    dispatch({ type:'COMPLETE_WEEKLY_QUEST', payload:q.id });
     const totalXP = (q.subQuests||[]).length > 0 ? (q.subQuests||[]).reduce((a,s)=>a+(s.xp||0),0) : q.xp;
-    addXP(totalXP, 'quest');
-    sfx('questComplete');
-    showNotif('WEEKLY QUEST CLEARED' + (q.statReward ? ` · +${q.statAmount||1} ${q.statReward.slice(0,3).toUpperCase()}` : ''));
+    confirm({
+      type:'confirm', icon:'📅', title:'COMPLETE WEEKLY QUEST?',
+      message: `"${q.name}" — mark as complete and claim +${totalXP} XP?`,
+      confirmLabel:'COMPLETE'
+    }, () => {
+      dispatch({ type:'COMPLETE_WEEKLY_QUEST', payload:q.id });
+      addXP(totalXP, 'quest');
+      sfx('questComplete');
+      showNotif('WEEKLY QUEST CLEARED' + (q.statReward ? ` · +${q.statAmount||1} ${q.statReward.slice(0,3).toUpperCase()}` : ''));
+    });
   };
   const completeMain = (q) => {
     if (q.completed) return;
-    dispatch({ type:'COMPLETE_MAIN_QUEST', payload:q.id });
     const totalXP = (q.subQuests||[]).length > 0 ? (q.subQuests||[]).reduce((a,s)=>a+(s.xp||0),0) : q.xp;
-    addXP(totalXP, 'quest');
-    sfx('questComplete');
-    showNotif('MAIN QUEST COMPLETE!' + (q.rewardId ? ' 🎁 REWARD EARNED' : ''));
+    confirm({
+      type:'confirm', icon:'🏆', title:'COMPLETE MAIN QUEST?',
+      message: `"${q.name}" — mark as complete and claim +${totalXP} XP?`,
+      confirmLabel:'COMPLETE'
+    }, () => {
+      dispatch({ type:'COMPLETE_MAIN_QUEST', payload:q.id });
+      addXP(totalXP, 'quest');
+      sfx('questComplete');
+      showNotif('MAIN QUEST COMPLETE!' + (q.rewardId ? ' 🎁 REWARD EARNED' : ''));
+    });
   };
 
   const STAT_OPTIONS = [
@@ -2175,6 +2228,7 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      <ConfirmModal config={confirmCfg} onConfirm={handleConfirm} onCancel={()=>setConfirmCfg(null)} />
       <div style={{ padding:'12px 16px 0' }}>
         <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3, marginBottom:12 }}>MISSION BOARD</div>
         <div style={{ display:'flex', gap:6, marginBottom:12 }}>
@@ -2263,11 +2317,17 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <button onClick={()=>{
                     if(q.completed) return;
-                    dispatch({type:'COMPLETE_SIDE_QUEST', payload:q.id});
-                    addXP(q.xp, 'quest');
-                    sfx('questComplete');
-                    const statMsg = (q.statRewards||[]).filter(s=>s.stat).map(s=>`+${s.amount} ${s.stat.slice(0,3).toUpperCase()}`).join(' ');
-                    showNotif('🎯 SIDE QUEST DONE' + (statMsg ? ' · ' + statMsg : ''));
+                    confirm({
+                      type:'confirm', icon:'🎯', title:'COMPLETE SIDE QUEST?',
+                      message: `"${q.name}" — mark as complete and claim +${q.xp} XP?`,
+                      confirmLabel:'COMPLETE'
+                    }, () => {
+                      dispatch({type:'COMPLETE_SIDE_QUEST', payload:q.id});
+                      addXP(q.xp, 'quest');
+                      sfx('questComplete');
+                      const statMsg = (q.statRewards||[]).filter(s=>s.stat).map(s=>`+${s.amount} ${s.stat.slice(0,3).toUpperCase()}`).join(' ');
+                      showNotif('🎯 SIDE QUEST DONE' + (statMsg ? ' · ' + statMsg : ''));
+                    });
                   }} disabled={q.completed} style={{
                     width:28, height:28, borderRadius:6, flexShrink:0, cursor: q.completed ? 'default' : 'pointer',
                     border: q.completed ? 'none' : '1px solid var(--gold)',
@@ -2301,16 +2361,28 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
                     )}
                     {!q.completed && (
                       <button onClick={()=>{
-                        sfx('broken');
-                        applyPenalty(q.xp, `Failed side quest: ${q.name}`);
-                        dispatch({type:'DELETE_SIDE_QUEST', payload:q.id});
+                        confirm({
+                          type:'danger', icon:'💀', title:'FAIL SIDE QUEST?',
+                          message: `"${q.name}" will be deleted and you will lose HP as penalty.`,
+                          confirmLabel:'FAIL IT'
+                        }, () => {
+                          sfx('broken');
+                          applyPenalty(q.xp, `Failed side quest: ${q.name}`);
+                          dispatch({type:'DELETE_SIDE_QUEST', payload:q.id});
+                        });
                       }} style={{
                         background:'rgba(231,76,60,0.15)', border:'1px solid rgba(231,76,60,0.5)', borderRadius:4,
                         color:'var(--crimson)', fontSize:9, padding:'3px 7px', cursor:'pointer',
                         fontFamily:'Cinzel,serif', letterSpacing:1
                       }}>FAIL</button>
                     )}
-                    <button onClick={()=>dispatch({type:'DELETE_SIDE_QUEST',payload:q.id})} style={{
+                    <button onClick={()=>{
+                      confirm({
+                        type:'danger', icon:'🗑️', title:'DELETE SIDE QUEST?',
+                        message: `"${q.name}" will be permanently deleted with no penalty.`,
+                        confirmLabel:'DELETE'
+                      }, () => dispatch({type:'DELETE_SIDE_QUEST',payload:q.id}));
+                    }} style={{
                       background:'none', border:'none', cursor:'pointer', color:'rgba(231,76,60,0.4)', padding:2, display:'flex', alignItems:'center'
                     }}
                       onMouseEnter={e=>e.currentTarget.style.color='var(--crimson)'}
@@ -2339,10 +2411,16 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
                       }}>
                         <button onClick={()=>{
                           if(s.completed || q.completed) return;
-                          dispatch({ type:'COMPLETE_SUB_QUEST', payload:{ questType:'side', questId:q.id, subId:s.id } });
-                          addXP(s.xp, 'quest');
-                          sfx('questComplete');
-                          showNotif(`✅ ${s.name} (+${s.xp} XP)`);
+                          confirm({
+                            type:'confirm', icon:'✅', title:'COMPLETE SUB-QUEST?',
+                            message: `"${s.name}" — claim +${s.xp} XP?`,
+                            confirmLabel:'DONE'
+                          }, () => {
+                            dispatch({ type:'COMPLETE_SUB_QUEST', payload:{ questType:'side', questId:q.id, subId:s.id } });
+                            addXP(s.xp, 'quest');
+                            sfx('questComplete');
+                            showNotif(`✅ ${s.name} (+${s.xp} XP)`);
+                          });
                         }} disabled={s.completed || q.completed} style={{
                           width:18, height:18, borderRadius:3, flexShrink:0,
                           cursor: s.completed || q.completed ? 'default' : 'pointer',
@@ -3683,7 +3761,7 @@ function BodyAICoach({ state }) {
     setKeyError('');
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${testKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${testKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3752,7 +3830,7 @@ COACHING STYLE:
       }));
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -4201,25 +4279,42 @@ function HabitsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
   const [newHabit, setNewHabit] = useState({ name:'', category:'Physical', xpPerCompletion:30, icon:'⚡', frequency:'daily' });
   const today = todayStr();
 
+  const [habitConfirm, setHabitConfirm] = useState(null);
+  const habitConfirmAction = (cfg, onConfirm) => setHabitConfirm({ ...cfg, _onConfirm: onConfirm });
+  const handleHabitConfirm = () => { if (habitConfirm?._onConfirm) habitConfirm._onConfirm(); setHabitConfirm(null); };
+
   const completeHabit = (h) => {
     if (h.completedDates.includes(today)) return;
-    dispatch({ type:'COMPLETE_HABIT', payload:h.id });
     const streakBonus = Math.min(3, 1 + h.streak*0.1);
     const xp = Math.round(h.xpPerCompletion * streakBonus);
-    addXP(xp, 'habit');
-    sfx('habitComplete');
-    dispatch({ type:'GAIN_STAT', payload:{ stat:'discipline', amount:1 } });
-    showNotif(`🔥 STREAK: ${h.streak+1}`);
+    habitConfirmAction({
+      type:'confirm', icon:'🔥', title:'COMPLETE HABIT?',
+      message: `"${h.name}" — mark done and claim +${xp} XP? Streak: ${h.streak+1} 🔥`,
+      confirmLabel:'DONE'
+    }, () => {
+      dispatch({ type:'COMPLETE_HABIT', payload:h.id });
+      addXP(xp, 'habit');
+      sfx('habitComplete');
+      dispatch({ type:'GAIN_STAT', payload:{ stat:'discipline', amount:1 } });
+      showNotif(`🔥 STREAK: ${h.streak+1}`);
+    });
   };
 
   const failHabit = (h) => {
-    sfx('broken');
-    applyPenalty(h.xpPerCompletion, `Failed habit: ${h.name}`);
-    dispatch({ type:'COMPLETE_HABIT', payload:h.id }); // mark done so they can't re-fail
+    habitConfirmAction({
+      type:'danger', icon:'💀', title:'FAIL HABIT?',
+      message: `"${h.name}" — this will break your streak and cost you HP.`,
+      confirmLabel:'FAIL IT'
+    }, () => {
+      sfx('broken');
+      applyPenalty(h.xpPerCompletion, `Failed habit: ${h.name}`);
+      dispatch({ type:'COMPLETE_HABIT', payload:h.id });
+    });
   };
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      <ConfirmModal config={habitConfirm} onConfirm={handleHabitConfirm} onCancel={()=>setHabitConfirm(null)} />
       <div style={{ padding:'12px 16px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3 }}>SHADOW ARMY</div>
@@ -4792,6 +4887,7 @@ const RANK_ORDER = ['E','D','C','B','A','S','MONARCH'];
 function rankGte(a, b) { return RANK_ORDER.indexOf(a) >= RANK_ORDER.indexOf(b); }
 
 function RewardsScreen({ state, dispatch, addXP, showNotif, sfx }) {
+  const [rewardConfirm, setRewardConfirm] = useState(null);
   const [cat, setCat] = useState('Titles');
   const [confirmItem, setConfirmItem] = useState(null);
   const [justBought, setJustBought] = useState(null);
@@ -4858,6 +4954,23 @@ function RewardsScreen({ state, dispatch, addXP, showNotif, sfx }) {
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      {rewardConfirm && (
+        <div style={{ position:'fixed', inset:0, zIndex:999, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+          <div style={{ background:'var(--panel)', border:'1px solid rgba(243,156,18,0.4)', borderRadius:14, padding:24, width:'100%', maxWidth:340, textAlign:'center' }}>
+            <div style={{ fontSize:36, marginBottom:12 }}>{rewardConfirm.r.emoji}</div>
+            <div className="cinzel" style={{ fontSize:14, color:'var(--gold)', marginBottom:8 }}>REDEEM REWARD?</div>
+            <div style={{ fontSize:13, color:'var(--text)', marginBottom:6 }}>{rewardConfirm.r.name}</div>
+            <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:20 }}>
+              {rewardConfirm.r.cost > 0 ? `Costs ${rewardConfirm.r.cost} 🪙 coins` : 'Free reward'}
+              {rewardConfirm.r.desc ? ` · ${rewardConfirm.r.desc}` : ''}
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={()=>setRewardConfirm(null)} style={{ flex:1, padding:'10px', borderRadius:8, cursor:'pointer', border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)', color:'var(--text-dim)', fontFamily:'Cinzel,serif', fontSize:11 }}>CANCEL</button>
+              <button onClick={()=>{ rewardConfirm._onConfirm(); setRewardConfirm(null); }} style={{ flex:1, padding:'10px', borderRadius:8, cursor:'pointer', border:'1px solid var(--gold)', background:'rgba(243,156,18,0.15)', color:'var(--gold)', fontFamily:'Cinzel,serif', fontSize:11, fontWeight:700 }}>REDEEM ✓</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ padding:'12px 16px 0' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
           <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3 }}>REWARD VAULT</div>
@@ -5009,15 +5122,17 @@ function RewardsScreen({ state, dispatch, addXP, showNotif, sfx }) {
                       {effectTags.length > 0 ? (
                         <button onClick={()=>{
                           if (!canAfford) return;
-                          dispatch({ type:'REDEEM_CUSTOM_REWARD', payload:{ rewardId:r.id } });
-                          if (fx.xpGain > 0) addXP(fx.xpGain, 'reward');
-                          sfx('purchase');
-                          const msgs = [];
-                          if (fx.hpBoost > 0) msgs.push(`+${fx.hpBoost} HP`);
-                          if (fx.xpGain > 0) msgs.push(`+${fx.xpGain} XP`);
-                          if (fx.statBuff?.stat) msgs.push(`+${fx.statBuff.amount||1} ${fx.statBuff.stat==='all'?'ALL STATS':fx.statBuff.stat.toUpperCase()}`);
-                          if (fx.collectable) msgs.push('Collected!');
-                          showNotif(`${r.emoji} ${r.name}${msgs.length?' · '+msgs.join(' · '):''}`);
+                          setRewardConfirm({ r, fx, _onConfirm: () => {
+                            dispatch({ type:'REDEEM_CUSTOM_REWARD', payload:{ rewardId:r.id } });
+                            if (fx.xpGain > 0) addXP(fx.xpGain, 'reward');
+                            sfx('purchase');
+                            const msgs = [];
+                            if (fx.hpBoost > 0) msgs.push(`+${fx.hpBoost} HP`);
+                            if (fx.xpGain > 0) msgs.push(`+${fx.xpGain} XP`);
+                            if (fx.statBuff?.stat) msgs.push(`+${fx.statBuff.amount||1} ${fx.statBuff.stat==='all'?'ALL STATS':fx.statBuff.stat.toUpperCase()}`);
+                            if (fx.collectable) msgs.push('Collected!');
+                            showNotif(`${r.emoji} ${r.name}${msgs.length?' · '+msgs.join(' · '):''}`);
+                          }});
                         }} disabled={!canAfford} style={{
                           padding:'5px 14px', borderRadius:6, cursor:canAfford?'pointer':'not-allowed',
                           border:`1px solid ${canAfford?'var(--gold)':'rgba(100,100,100,0.3)'}`,
@@ -6298,7 +6413,7 @@ function AIKeyPanel({ showNotif }) {
     setTestStatus('checking'); setTestError('');
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`,
         { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{ parts:[{ text:'Hi' }] }] }) }
       );
       if (res.ok) { setTestStatus('ok'); }
