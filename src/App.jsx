@@ -3683,7 +3683,7 @@ function BodyAICoach({ state }) {
     setKeyError('');
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${testKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3752,7 +3752,7 @@ COACHING STYLE:
       }));
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6298,7 +6298,7 @@ function AIKeyPanel({ showNotif }) {
     setTestStatus('checking'); setTestError('');
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
         { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{ parts:[{ text:'Hi' }] }] }) }
       );
       if (res.ok) { setTestStatus('ok'); }
