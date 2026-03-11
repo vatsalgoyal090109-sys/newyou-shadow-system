@@ -8,114 +8,383 @@ import {
 
 // ─── STYLES ─────────────────────────────────────────────────────────────────
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Noto+Sans+Display:wght@700;900&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --mana: #4FC3F7;
-  --violet: #9B59B6;
+  --mana: #5CC8FF;
+  --mana-dim: rgba(92,200,255,0.45);
+  --violet: #9B72D4;
   --crimson: #E74C3C;
-  --gold: #F39C12;
-  --bg: #050508;
-  --bg2: #0a0a12;
-  --bg3: #0f0f1a;
-  --card: rgba(10,10,20,0.9);
-  --border: rgba(79,195,247,0.2);
-  --border-bright: rgba(79,195,247,0.5);
-  --text: #e0e8ff;
-  --text-dim: #6a7a9a;
+  --gold: #E8C842;
+  --bg: #020C18;
+  --bg2: #040E1C;
+  --bg3: #081424;
+  --card: rgba(4,14,28,0.85);
+  --border: rgba(92,200,255,0.22);
+  --border-bright: rgba(92,200,255,0.6);
+  --text: #C8DFEF;
+  --text-dim: #4A748A;
+  --text-bright: #FFFFFF;
+  --sep: rgba(92,200,255,0.18);
 }
 
-body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans', sans-serif; overflow: hidden; font-weight: 400; }
 
+/* .cinzel maps to the SL title style — bold, spaced, white */
+.cinzel { font-family: 'Noto Sans Display', sans-serif; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
 
-@keyframes typingDot {
-  0%,100% { opacity: 0.2; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
+/* ─────────────────────────────────────────
+   FRAME LAYOUT — aspect-ratio wrapper
+   Measured from pixel analysis of 1280x853 frame image:
+   Top neon bar inner edge ≈ 22%, Bottom ≈ 20%
+   Left inner edge ≈ 11%, Right ≈ 12%
+───────────────────────────────────────── */
+.panel-frame {
+  position: fixed; inset: 0;
+  background: #010A14;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.panel-aspect {
+  position: relative;
+  width: 100vw;
+  height: calc(100vw * 853 / 1280);
+  max-height: 100vh;
+  max-width: calc(100vh * 1280 / 853);
+  flex-shrink: 0;
+}
+.panel-bg-image {
+  position: absolute; inset: 0;
+  background-image: var(--panel-bg);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none; z-index: 0;
+}
+.panel-inner {
+  position: absolute;
+  top: 22%; bottom: 20%; left: 11%; right: 12%;
+  display: flex; flex-direction: column;
+  overflow: hidden; z-index: 1;
+}
+.landscape-layout {
+  display: flex; flex-direction: row;
+  flex: 1; overflow: hidden;
 }
 
-.cinzel { font-family: 'Cinzel', serif; }
+/* ── SCAN LINE ── */
+@keyframes panelScan {
+  0%   { top: 0%;   opacity: 0; }
+  3%   { opacity: 0.7; }
+  97%  { opacity: 0.4; }
+  100% { top: 100%; opacity: 0; }
+}
+.panel-scan-line {
+  position: absolute; left: 11%; right: 12%;
+  top: 22%; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--mana-dim) 30%, rgba(92,200,255,0.8) 50%, var(--mana-dim) 70%, transparent 100%);
+  animation: panelScan 12s linear infinite;
+  pointer-events: none; z-index: 10;
+}
 
+/* ─────────────────────────────────────────
+   SIDE NAV — SL style
+───────────────────────────────────────── */
+.side-nav {
+  display: flex; flex-direction: column;
+  background: rgba(2,8,18,0.92);
+  border-right: 1px solid var(--sep);
+  width: 54px; flex-shrink: 0;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: none;
+}
+.side-nav::-webkit-scrollbar { display: none; }
+.side-nav-tab {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; padding: 8px 2px;
+  cursor: pointer; transition: all 0.15s;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid rgba(92,200,255,0.05);
+  font-size: 6px; color: var(--text-dim);
+  min-height: 44px; flex-shrink: 0;
+  font-family: 'Noto Sans', sans-serif;
+  font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.side-nav-tab.active {
+  color: var(--mana);
+  border-left-color: var(--mana);
+  background: rgba(92,200,255,0.07);
+}
+.side-nav-tab:hover:not(.active) { color: var(--text); background: rgba(92,200,255,0.04); }
+
+/* ─────────────────────────────────────────
+   TOP HUD BAR
+───────────────────────────────────────── */
+.panel-content {
+  flex: 1; overflow: hidden; display: flex; flex-direction: column; position: relative;
+}
+.panel-topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 10px;
+  background: rgba(2,6,16,0.96);
+  border-bottom: 1px solid var(--sep);
+  flex-shrink: 0; min-height: 28px;
+}
+
+/* ─────────────────────────────────────────
+   SL SCREEN HEADER  (like "STATUS" in image 2)
+───────────────────────────────────────── */
+.sl-screen-header {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 5px 16px; flex-shrink: 0;
+  background: rgba(2,6,16,0.9);
+  border-bottom: 1px solid var(--sep);
+}
+.sl-screen-header-line {
+  flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--sep));
+}
+.sl-screen-header-line.right { transform: scaleX(-1); }
+.sl-screen-title {
+  font-family: 'Noto Sans Display', sans-serif;
+  font-size: 11px; font-weight: 900;
+  color: var(--mana); letter-spacing: 8px;
+  text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(92,200,255,0.5);
+}
+
+/* ─────────────────────────────────────────
+   SL NOTIFICATION / MODAL style (images 1 & 3)
+   ⓘ NOTIFICATION header + bullet items
+───────────────────────────────────────── */
+.sl-notif {
+  background: rgba(3,9,22,0.97);
+  border: 1px solid rgba(92,200,255,0.45);
+  padding: 0; position: relative;
+  box-shadow: 0 0 40px rgba(92,200,255,0.12);
+}
+.sl-notif::before, .sl-notif::after {
+  content: ''; position: absolute; width: 10px; height: 10px; pointer-events: none;
+}
+.sl-notif::before { top:-1px; left:-1px; border-top:1px solid var(--mana); border-left:1px solid var(--mana); }
+.sl-notif::after  { bottom:-1px; right:-1px; border-bottom:1px solid var(--mana); border-right:1px solid var(--mana); }
+
+.sl-notif-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(92,200,255,0.25);
+}
+.sl-notif-icon {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid var(--mana); color: var(--mana);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  font-style: italic;
+}
+.sl-notif-title {
+  font-family: 'Noto Sans Display', sans-serif;
+  font-size: 13px; font-weight: 900;
+  color: var(--text-bright); letter-spacing: 4px;
+}
+.sl-notif-body { padding: 10px 14px; }
+.sl-notif-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0;
+  font-size: 12px; color: var(--text);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.sl-notif-item:last-child { border-bottom: none; }
+.sl-notif-item::before { content: '•'; color: var(--mana); flex-shrink: 0; }
+.sl-notif-bracket { color: var(--text-dim); }
+
+/* ─────────────────────────────────────────
+   PANEL CARDS
+───────────────────────────────────────── */
 .panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: inset 0 0 20px rgba(79,195,247,0.03), 0 4px 20px rgba(0,0,0,0.5);
+  background: rgba(4,12,26,0.88);
+  border: 1px solid var(--sep);
+  border-radius: 0;
+  position: relative;
+}
+.panel::before {
+  content: ''; position: absolute;
+  top: -1px; left: -1px; width: 8px; height: 8px;
+  border-top: 1px solid var(--mana); border-left: 1px solid var(--mana);
+  pointer-events: none;
+}
+.panel::after {
+  content: ''; position: absolute;
+  bottom: -1px; right: -1px; width: 8px; height: 8px;
+  border-bottom: 1px solid var(--mana); border-right: 1px solid var(--mana);
+  pointer-events: none;
+}
+.panel-glow { box-shadow: 0 0 16px rgba(92,200,255,0.08); }
+
+/* ── SL SEPARATOR ── */
+.sl-sep {
+  height: 1px; background: var(--sep); margin: 8px 0; flex-shrink: 0;
 }
 
-.panel-glow {
-  box-shadow: 0 0 20px rgba(79,195,247,0.15), inset 0 0 20px rgba(79,195,247,0.05);
-}
-
+/* ─────────────────────────────────────────
+   BUTTONS — exact SL style (flat, bordered, no radius)
+───────────────────────────────────────── */
 .btn-mana {
-  background: linear-gradient(135deg, rgba(79,195,247,0.15), rgba(79,195,247,0.05));
+  background: transparent;
   border: 1px solid var(--mana);
   color: var(--mana);
-  border-radius: 6px;
-  padding: 8px 16px;
+  border-radius: 0;
+  padding: 6px 20px;
   cursor: pointer;
-  font-family: 'Cinzel', serif;
-  font-size: 12px;
-  letter-spacing: 1px;
-  transition: all 0.2s;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  transition: all 0.15s;
+  min-width: 70px;
 }
-.btn-mana:hover { background: rgba(79,195,247,0.25); box-shadow: 0 0 15px rgba(79,195,247,0.4); }
+.btn-mana:hover { background: rgba(92,200,255,0.12); box-shadow: 0 0 14px rgba(92,200,255,0.3); }
+.btn-mana:active { background: rgba(92,200,255,0.22); }
 
 .btn-gold {
-  background: linear-gradient(135deg, rgba(243,156,18,0.2), rgba(243,156,18,0.05));
+  background: transparent;
   border: 1px solid var(--gold);
-  color: var(--gold);
-  border-radius: 6px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-family: 'Cinzel', serif;
-  font-size: 12px;
-  letter-spacing: 1px;
-  transition: all 0.2s;
+  color: var(--gold); border-radius: 0;
+  padding: 6px 20px; cursor: pointer;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  transition: all 0.15s;
 }
-.btn-gold:hover { box-shadow: 0 0 15px rgba(243,156,18,0.4); }
+.btn-gold:hover { background: rgba(232,200,66,0.1); box-shadow: 0 0 14px rgba(232,200,66,0.3); }
 
 .btn-danger {
-  background: linear-gradient(135deg, rgba(231,76,60,0.2), rgba(231,76,60,0.05));
+  background: transparent;
   border: 1px solid var(--crimson);
-  color: var(--crimson);
-  border-radius: 6px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
+  color: var(--crimson); border-radius: 0;
+  padding: 6px 20px; cursor: pointer;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  transition: all 0.15s;
 }
-.btn-danger:hover { box-shadow: 0 0 15px rgba(231,76,60,0.4); }
+.btn-danger:hover { background: rgba(231,76,60,0.1); box-shadow: 0 0 14px rgba(231,76,60,0.3); }
 
+/* ─────────────────────────────────────────
+   INPUTS
+───────────────────────────────────────── */
 .input-dark {
-  background: rgba(5,5,15,0.8);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 10px 14px;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-  width: 100%;
+  background: rgba(3,9,22,0.9);
+  border: 1px solid var(--sep);
+  color: var(--text); border-radius: 0;
+  padding: 8px 12px;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 13px; font-weight: 400;
+  outline: none; transition: border-color 0.15s; width: 100%;
+  letter-spacing: 0.3px;
 }
-.input-dark:focus { border-color: var(--mana); box-shadow: 0 0 10px rgba(79,195,247,0.2); }
+.input-dark:focus { border-color: var(--mana); box-shadow: 0 0 10px rgba(92,200,255,0.15); }
+.input-dark::placeholder { color: var(--text-dim); }
 
-.scrollable { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(79,195,247,0.3) transparent; }
+.scrollable { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(92,200,255,0.2) transparent; }
 
-/* ANIMATIONS */
+/* ─────────────────────────────────────────
+   RANK BADGE & XP BAR
+───────────────────────────────────────── */
+.rank-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Noto Sans Display', sans-serif; font-weight: 900;
+  border-radius: 0; padding: 1px 6px;
+  letter-spacing: 1px;
+}
+.xp-bar-track {
+  background: rgba(232,200,66,0.08);
+  border: 1px solid rgba(232,200,66,0.2); border-radius: 0;
+  overflow: hidden; position: relative;
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8a6b00, var(--gold), #FFF0A0);
+  box-shadow: 0 0 8px rgba(232,200,66,0.5);
+  transition: width 1s ease-out;
+}
+
+/* ─────────────────────────────────────────
+   NOTIFICATION TOAST  (quest cleared)
+───────────────────────────────────────── */
+.quest-cleared-overlay {
+  position: fixed; top: 38%; left: 50%; transform: translateX(-50%);
+  z-index: 9998; pointer-events: none; white-space: nowrap;
+  font-family: 'Noto Sans Display', sans-serif; font-size: 15px; font-weight: 900;
+  color: var(--text-bright); letter-spacing: 5px; text-transform: uppercase;
+  background: rgba(3,9,22,0.96);
+  border: 1px solid var(--mana);
+  padding: 8px 24px;
+  text-shadow: 0 0 16px var(--mana);
+  box-shadow: 0 0 30px rgba(92,200,255,0.2);
+  animation: questCleared 2s ease-in-out forwards;
+}
+
+/* ─────────────────────────────────────────
+   MODAL
+───────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: rgba(3,9,22,0.98);
+  border: 1px solid rgba(92,200,255,0.4);
+  border-radius: 0; padding: 20px; max-width: 440px; width: 92%;
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 0 60px rgba(92,200,255,0.12);
+  animation: slideIn 0.2s ease-out;
+  position: relative;
+}
+.modal-box::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, var(--mana), transparent); }
+
+select.input-dark option { background: #030916; color: var(--text); }
+textarea.input-dark { resize: vertical; min-height: 90px; }
+
+/* ─────────────────────────────────────────
+   MISC
+───────────────────────────────────────── */
+.stat-bar-track { flex: 1; height: 5px; background: rgba(255,255,255,0.05); border-radius: 0; overflow: hidden; }
+.muscle-tooltip {
+  position: absolute; background: rgba(3,9,22,0.98);
+  border: 1px solid var(--mana); border-radius: 0;
+  padding: 6px 10px; font-size: 11px; pointer-events: none;
+  z-index: 100; white-space: nowrap;
+  box-shadow: 0 0 16px rgba(92,200,255,0.25);
+}
+.nav-tab { display: none; }
+
+/* ── LIGHT THEME ── */
+body.light-theme {
+  --bg: #EAF2FF; --bg2: #D8E8F8; --bg3: #C6DCF0;
+  --card: rgba(240,248,255,0.9);
+  --border: rgba(92,200,255,0.35); --border-bright: rgba(92,200,255,0.7);
+  --text: #0A1A2A; --text-dim: #4A6A8A;
+}
+body.light-theme .panel { background: rgba(230,245,255,0.9); }
+body.light-theme .modal-box { background: #EAF2FF; border-color: rgba(92,200,255,0.5); }
+body.light-theme .input-dark { background: rgba(220,240,255,0.9); color: #0A1A2A; border-color: rgba(92,200,255,0.3); }
+body.light-theme .panel-topbar { background: rgba(220,238,255,0.98); }
+
+/* ─────────────────────────────────────────
+   ANIMATIONS
+───────────────────────────────────────── */
+@keyframes typingDot {
+  0%,100% { opacity:0.2; transform:scale(0.8); }
+  50% { opacity:1; transform:scale(1.2); }
+}
 @keyframes intro-vibrate {
-  0% { transform: scale(1) translate(0,0) rotate(0deg); }
-  10% { transform: scale(1.01) translate(-3px, 1px) rotate(-0.3deg); }
-  20% { transform: scale(1.01) translate(3px, -1px) rotate(0.3deg); }
-  30% { transform: scale(1.02) translate(-2px, 2px) rotate(-0.2deg); }
-  40% { transform: scale(1.01) translate(2px, -2px) rotate(0.2deg); }
-  50% { transform: scale(1) translate(-1px, 1px) rotate(0deg); }
-  60% { transform: scale(1.01) translate(1px, -1px) rotate(0.1deg); }
-  70% { transform: scale(1) translate(0,0) rotate(0deg); }
-  100% { transform: scale(1) translate(0,0) rotate(0deg); }
-}
+  0%   { transform: scale(1) translate(0,0); }
+  20%  { transform: scale(1.01) translate(-2px,1px); }
+  40%  { transform: scale(1.01) translate(2px,-1px); }
+  60%  { transform: scale(1.02) translate(-1px,2px); }
+  80%  { transform: scale(1) translate(1px,-1px); }
+  100% { transform: scale(1) translate(0,0); }}
 @keyframes arise-intro {
   0% { opacity: 0; letter-spacing: 20px; }
   50% { opacity: 1; letter-spacing: 8px; }
@@ -198,168 +467,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
   text-shadow: 0 0 10px var(--gold);
 }
 
-.quest-cleared-overlay {
-  position: fixed; top: 40%; left: 50%; transform: translateX(-50%);
-  z-index: 9998; pointer-events: none;
-  font-family: 'Cinzel', serif; font-size: 28px; font-weight: 900;
-  color: var(--mana); letter-spacing: 6px;
-  text-shadow: 0 0 20px var(--mana), 0 0 40px var(--mana);
-  animation: questCleared 2s ease-in-out forwards;
-}
-
-.rank-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  font-family: 'Cinzel', serif; font-weight: 900;
-  border-radius: 4px; padding: 2px 8px;
-}
-
-.xp-bar-track {
-  background: rgba(243,156,18,0.08);
-  border: 1px solid rgba(243,156,18,0.22);
-  border-radius: 4px; height: 10px; overflow: hidden;
-}
-.xp-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #b8860b, #F39C12, #FFD700);
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(243,156,18,0.7), 0 0 16px rgba(255,215,0,0.3);
-  transition: width 1s ease-out;
-}
-
-.nav-tab {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 2px; padding: 8px 4px;
-  cursor: pointer; transition: all 0.2s;
-  border-top: 2px solid transparent;
-  font-size: 9px; color: var(--text-dim);
-}
-.nav-tab.active {
-  color: var(--mana);
-  border-top-color: var(--mana);
-  background: rgba(79,195,247,0.08);
-}
-.nav-tab:hover:not(.active) { color: var(--text); }
-
-.stat-bar-track {
-  flex: 1; height: 6px; background: rgba(255,255,255,0.05);
-  border-radius: 3px; overflow: hidden;
-}
-.muscle-tooltip {
-  position: absolute; background: rgba(5,5,15,0.95);
-  border: 1px solid var(--mana); border-radius: 6px;
-  padding: 8px 12px; font-size: 12px; pointer-events: none;
-  z-index: 100; white-space: nowrap;
-  box-shadow: 0 0 20px rgba(79,195,247,0.3);
-}
-
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 500; backdrop-filter: blur(4px);
-}
-.modal-box {
-  background: #080810; border: 1px solid var(--mana);
-  border-radius: 12px; padding: 24px; max-width: 440px; width: 90%;
-  max-height: 80vh; overflow-y: auto;
-  box-shadow: 0 0 40px rgba(79,195,247,0.2);
-  animation: slideIn 0.25s ease-out;
-}
-
-select.input-dark option { background: #0a0a15; }
-textarea.input-dark { resize: vertical; min-height: 120px; }
-
-/* ── LIGHT THEME ── */
-body.light-theme {
-  --bg: #f0f4ff;
-  --bg2: #e4eaff;
-  --bg3: #d8e0ff;
-  --card: rgba(255,255,255,0.92);
-  --border: rgba(79,195,247,0.35);
-  --border-bright: rgba(79,195,247,0.6);
-  --text: #0a0a1a;
-  --text-dim: #4a5a7a;
-}
-body.light-theme .panel { box-shadow: 0 2px 16px rgba(79,195,247,0.08), 0 1px 4px rgba(0,0,0,0.08); }
-body.light-theme .input-dark { background: rgba(240,244,255,0.9); color: #0a0a1a; }
-body.light-theme .modal-box { background: #f0f4ff; }
-
-/* ── LANDSCAPE PANEL LAYOUT ── */
-.panel-frame {
-  position: fixed; inset: 0;
-  background-image: var(--panel-bg);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-}
-.panel-inner {
-  position: absolute;
-  /* Inset to be inside the neon frame borders */
-  top: 8%; bottom: 9%; left: 5.5%; right: 5.5%;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-}
-.landscape-layout {
-  display: flex; flex-direction: row;
-  flex: 1; overflow: hidden; gap: 0;
-}
-.side-nav {
-  display: flex; flex-direction: column;
-  background: rgba(3,8,20,0.85);
-  border-right: 1px solid rgba(79,195,247,0.25);
-  width: 62px; flex-shrink: 0;
-  overflow-y: auto; overflow-x: hidden;
-  scrollbar-width: none;
-  box-shadow: 2px 0 12px rgba(0,0,0,0.5);
-}
-.side-nav::-webkit-scrollbar { display: none; }
-.side-nav-tab {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px; padding: 10px 4px;
-  cursor: pointer; transition: all 0.2s;
-  border-left: 2px solid transparent;
-  font-size: 7px; color: var(--text-dim);
-  min-height: 50px; flex-shrink: 0;
-  font-family: 'Cinzel', serif; letter-spacing: 0.5px;
-}
-.side-nav-tab.active {
-  color: var(--mana);
-  border-left-color: var(--mana);
-  background: rgba(79,195,247,0.1);
-}
-.side-nav-tab:hover:not(.active) { color: var(--text); background: rgba(79,195,247,0.05); }
-.panel-content {
-  flex: 1; overflow: hidden; position: relative;
-  background: rgba(3,6,18,0.82);
-}
-.panel-topbar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 4px 12px;
-  background: rgba(3,5,15,0.9);
-  border-bottom: 1px solid rgba(79,195,247,0.2);
-  flex-shrink: 0; min-height: 32px;
-}
-/* Neon corner accents */
-.corner-tl, .corner-tr, .corner-bl, .corner-br {
-  position: absolute; width: 20px; height: 20px; pointer-events: none; z-index: 2;
-}
-.corner-tl { top: 0; left: 0; border-top: 2px solid var(--mana); border-left: 2px solid var(--mana); }
-.corner-tr { top: 0; right: 0; border-top: 2px solid var(--mana); border-right: 2px solid var(--mana); }
-.corner-bl { bottom: 0; left: 0; border-bottom: 2px solid var(--mana); border-left: 2px solid var(--mana); }
-.corner-br { bottom: 0; right: 0; border-bottom: 2px solid var(--mana); border-right: 2px solid var(--mana); }
-@keyframes panelScan {
-  0% { transform: translateY(-100%); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateY(200vh); opacity: 0; }
-}
-.panel-scan-line {
-  position: absolute; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(79,195,247,0.4), transparent);
-  animation: panelScan 8s linear infinite;
-  pointer-events: none; z-index: 1;
-}
-
 /* ── BOSS FIGHT ── */
 @keyframes bossShake {
   0%,100% { transform: translateX(0); }
@@ -381,6 +488,7 @@ body.light-theme .modal-box { background: #f0f4ff; }
   0%,100% { transform: translateY(0px) rotate(0deg); filter: drop-shadow(0 0 8px #E74C3C); }
   25% { transform: translateY(-8px) rotate(-3deg); filter: drop-shadow(0 0 20px #E74C3C); }
   75% { transform: translateY(-8px) rotate(3deg); filter: drop-shadow(0 0 20px #FF6B35); }
+
 }
 @keyframes bossDesperate {
   0%,100% { transform: translateY(0px) rotate(0deg) scale(1); filter: drop-shadow(0 0 15px #E74C3C); }
@@ -7599,95 +7707,88 @@ export default function App() {
     <>
       <style>{STYLES}</style>
 
-      {/* ── PANEL FRAME — landscape layout ── */}
-      <div className="panel-frame" style={{ '--panel-bg': `url(${PANEL_BG})` }}>
-        {/* Scanline effect */}
+      {/* ── PANEL FRAME ── */}
+      <div className="panel-frame">
+        {/* Scan line sits over the whole frame */}
         <div className="panel-scan-line"/>
 
-        {/* Inner content area — sits inside the neon frame */}
-        <div className="panel-inner">
-          {/* Top Bar */}
-          <div className="panel-topbar">
-            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer' }} onClick={()=>setTab('rewards')}>
-                <span style={{ fontSize:12 }}>🪙</span>
-                <span className="cinzel" style={{ fontSize:11, color:'var(--gold)' }}>{(state.hunter.coins||0).toLocaleString()}</span>
-              </div>
-              <div style={{ width:1, height:16, background:'rgba(79,195,247,0.2)' }}/>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+        {/* Aspect-ratio wrapper — content stays inside the neon border */}
+        <div className="panel-aspect" style={{ '--panel-bg': `url(${PANEL_BG})` }}>
+          <div className="panel-bg-image"/>
+
+          <div className="panel-inner">
+            {/* HUD Top Bar */}
+            <div className="panel-topbar">
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 <RankBadge rank={state.hunter.rank} size={9}/>
-                <span className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:1 }}>
-                  {state.hunter.name} · Lv.{state.hunter.level}
+                <span style={{ fontFamily:'Noto Sans Display,sans-serif', fontWeight:900, fontSize:11, color:'#fff', letterSpacing:2 }}>
+                  {state.hunter.name.toUpperCase()}
                 </span>
-              </div>
-              {/* HP bar compact */}
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:9, color:'var(--crimson)', fontFamily:'Cinzel,serif' }}>HP</span>
-                <div style={{ width:80, height:6, background:'rgba(255,255,255,0.05)', borderRadius:3, overflow:'hidden', border:'1px solid rgba(231,76,60,0.2)' }}>
-                  <div style={{ height:'100%', width:`${((state.hunter.hp??state.hunter.maxHp??100)/(state.hunter.maxHp||100))*100}%`, background:'linear-gradient(90deg,#E74C3C,#FF6B6B)', borderRadius:3, transition:'width 0.5s' }}/>
+                <span style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:1 }}>LV.{state.hunter.level}</span>
+                <div style={{ width:1, height:12, background:'var(--sep)', margin:'0 2px' }}/>
+                {/* HP */}
+                <span style={{ fontSize:9, color:'#FF6060', fontWeight:700, letterSpacing:1 }}>HP</span>
+                <div style={{ width:64, height:4, background:'rgba(255,255,255,0.06)', overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${((state.hunter.hp??state.hunter.maxHp??100)/(state.hunter.maxHp||100))*100}%`, background:'linear-gradient(90deg,#8B1A1A,#E74C3C)', transition:'width 0.5s' }}/>
                 </div>
-                <span style={{ fontSize:9, color:'var(--crimson)' }}>{Math.round(state.hunter.hp??100)}</span>
-              </div>
-              {/* XP bar compact */}
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:9, color:'var(--mana)', fontFamily:'Cinzel,serif' }}>XP</span>
-                <div style={{ width:80, height:6, background:'rgba(255,255,255,0.05)', borderRadius:3, overflow:'hidden', border:'1px solid rgba(79,195,247,0.2)' }}>
-                  <div style={{ height:'100%', width:`${Math.min(100,(state.hunter.totalXP/state.hunter.xpToNextLevel)*100)}%`, background:'linear-gradient(90deg,var(--mana),#81D4FA)', borderRadius:3, transition:'width 0.5s' }}/>
+                <span style={{ fontSize:9, color:'#E74C3C' }}>{Math.round(state.hunter.hp??100)}</span>
+                <div style={{ width:1, height:12, background:'var(--sep)', margin:'0 2px' }}/>
+                {/* XP */}
+                <span style={{ fontSize:9, color:'var(--mana)', fontWeight:700, letterSpacing:1 }}>XP</span>
+                <div style={{ width:64, height:4, background:'rgba(255,255,255,0.06)', overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${Math.min(100,(state.hunter.totalXP/state.hunter.xpToNextLevel)*100)}%`, background:'linear-gradient(90deg,#1060A0,var(--mana))', transition:'width 0.5s' }}/>
                 </div>
+                <div style={{ width:1, height:12, background:'var(--sep)', margin:'0 2px' }}/>
+                {/* Coins */}
+                <span style={{ fontSize:10, cursor:'pointer', color:'var(--gold)', fontWeight:700, letterSpacing:1 }} onClick={()=>setTab('rewards')}>
+                  🪙 {(state.hunter.coins||0).toLocaleString()}
+                </span>
+                {(state.gameData?.streakShields||0)>0 && <span style={{ fontSize:10, color:'var(--mana)' }}>🛡️{state.gameData.streakShields}</span>}
+                {(state.gameData?.comboCount||0)>=2 && state.gameData?.comboDate===todayStr() && <span style={{ fontSize:10, color:'var(--gold)', fontWeight:700 }}>🔥{state.gameData.comboCount}×</span>}
               </div>
-              {/* Game data quick stats */}
-              {(state.gameData?.streakShields||0) > 0 && (
-                <span style={{ fontSize:10 }}>🛡️<span className="cinzel" style={{ fontSize:9, color:'var(--mana)', marginLeft:2 }}>{state.gameData.streakShields}</span></span>
-              )}
-              {(state.gameData?.comboCount||0) >= 2 && state.gameData?.comboDate === todayStr() && (
-                <span className="cinzel" style={{ fontSize:10, color:'var(--gold)' }}>🔥{state.gameData.comboCount}×</span>
-              )}
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <button onClick={()=>setShowRankCard(true)} style={{
-                background:'none', border:'1px solid rgba(243,156,18,0.3)', borderRadius:4,
-                color:'rgba(243,156,18,0.7)', fontSize:8, padding:'3px 7px', cursor:'pointer',
-                fontFamily:'Cinzel,serif', letterSpacing:1
-              }}>🃏 CARD</button>
-              <button onClick={()=>setShowReset(true)} style={{
-                background:'none', border:'1px solid rgba(231,76,60,0.25)', borderRadius:4,
-                color:'rgba(231,76,60,0.6)', fontSize:8, padding:'3px 7px', cursor:'pointer',
-                fontFamily:'Cinzel,serif', letterSpacing:1
-              }}>↺ RESET</button>
-            </div>
-          </div>
-
-          {/* Main layout: side nav + content */}
-          <div className="landscape-layout">
-            {/* Side Nav */}
-            <div className="side-nav">
-              {NAV_TABS.map(t => {
-                const Icon = t.icon;
-                return (
-                  <div key={t.id} className={`side-nav-tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
-                    <Icon size={14}/>
-                    <span>{t.label}</span>
-                  </div>
-                );
-              })}
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={()=>setShowRankCard(true)} className="btn-mana" style={{ fontSize:9, padding:'2px 10px', letterSpacing:1 }}>CARD</button>
+                <button onClick={()=>setShowReset(true)} className="btn-danger" style={{ fontSize:9, padding:'2px 10px', letterSpacing:1 }}>RESET</button>
+              </div>
             </div>
 
-            {/* Content area */}
-            <div className="panel-content">
-              {/* Corner accents */}
-              <div className="corner-tl"/><div className="corner-tr"/>
-              <div className="corner-bl"/><div className="corner-br"/>
-              {tab==='status'   && <StatusScreen {...screenProps}/>}
-              {tab==='quests'   && <QuestsScreen {...screenProps}/>}
-              {tab==='health'   && <HealthScreen {...screenProps}/>}
-              {tab==='mind'     && <MindScreen {...screenProps}/>}
-              {tab==='habits'   && <HabitsScreen {...screenProps}/>}
-              {tab==='journal'  && <JournalScreen {...screenProps}/>}
-              {tab==='rewards'    && <RewardsScreen {...screenProps}/>}
-              {tab==='boss'       && <BossScreen {...screenProps}/>}
-              {tab==='collection' && <CollectionScreen {...screenProps}/>}
-              {tab==='antitodo'   && <AntiTodoScreen {...screenProps}/>}
-              {tab==='settings'   && <SettingsScreen {...screenProps}/>}
+            {/* Main layout */}
+            <div className="landscape-layout">
+              {/* Side Nav */}
+              <div className="side-nav">
+                {NAV_TABS.map(t => {
+                  const Icon = t.icon;
+                  return (
+                    <div key={t.id} className={`side-nav-tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+                      <Icon size={13}/>
+                      <span>{t.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Content */}
+              <div className="panel-content">
+                {/* SL screen header — "STATUS", "QUESTS" etc */}
+                <div className="sl-screen-header">
+                  <div className="sl-screen-header-line"/>
+                  <span className="sl-screen-title">{NAV_TABS.find(t=>t.id===tab)?.label||'STATUS'}</span>
+                  <div className="sl-screen-header-line right"/>
+                </div>
+                <div style={{ flex:1, overflow:'hidden', position:'relative' }}>
+                  {tab==='status'   && <StatusScreen {...screenProps}/>}
+                  {tab==='quests'   && <QuestsScreen {...screenProps}/>}
+                  {tab==='health'   && <HealthScreen {...screenProps}/>}
+                  {tab==='mind'     && <MindScreen {...screenProps}/>}
+                  {tab==='habits'   && <HabitsScreen {...screenProps}/>}
+                  {tab==='journal'  && <JournalScreen {...screenProps}/>}
+                  {tab==='rewards'    && <RewardsScreen {...screenProps}/>}
+                  {tab==='boss'       && <BossScreen {...screenProps}/>}
+                  {tab==='collection' && <CollectionScreen {...screenProps}/>}
+                  {tab==='antitodo'   && <AntiTodoScreen {...screenProps}/>}
+                  {tab==='settings'   && <SettingsScreen {...screenProps}/>}
+                </div>
+              </div>
             </div>
           </div>
         </div>
