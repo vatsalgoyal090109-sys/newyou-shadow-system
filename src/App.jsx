@@ -404,12 +404,107 @@ const AFFIRMATIONS = {
 
 // ─── BOSS FIGHTS ─────────────────────────────────────────────────────────────
 const BOSS_DATA = {
-  D: { name:'The Mediocrity Demon', emoji:'👺', desc:'"You\'ve done enough today. Rest." — It lies.', challenge:'Complete 3 quests in a single day.', xpReward:800, rankTarget:'D' },
-  C: { name:'The Comfort Cage', emoji:'🕷️', desc:'It thrives in your routines. It fears your growth.', challenge:'Maintain 3 habits for 3 days straight.', xpReward:1500, rankTarget:'C' },
-  B: { name:'The Shadow of Doubt', emoji:'🌑', desc:'It knows every weakness you have not yet conquered.', challenge:'Complete your Big Three quests this week.', xpReward:3000, rankTarget:'B' },
-  A: { name:'Apex Predator', emoji:'🐉', desc:'Born from 99% of humanity\'s abandoned potential.', challenge:'Zero failures for 5 consecutive days.', xpReward:6000, rankTarget:'A' },
-  S: { name:'The Void King', emoji:'☠️', desc:'The last guardian before Monarch. The hardest test.', challenge:'Complete every quest and habit for 7 days.', xpReward:12000, rankTarget:'S' },
+  D: {
+    name:'The Mediocrity Demon', emoji:'👺', rankTarget:'D',
+    desc:'"You\'ve done enough today. Rest." — It lies.',
+    challengeDesc:'Complete 3 or more quests in a single day.',
+    challengeType:'daily_quests', challengeTarget:3,
+    maxHp:300, damagePerHit:60, counterDmg:5,
+    xpReward:800,
+    taunt:['Your potential ends here.','Give up. You\'re tired.','You can\'t even finish your dailies.'],
+  },
+  C: {
+    name:'The Comfort Cage', emoji:'🕷️', rankTarget:'C',
+    desc:'It thrives in your routines. It fears your growth.',
+    challengeDesc:'Build 3 habits each with a streak of 3+ days.',
+    challengeType:'habit_streaks', challengeTarget:3,
+    maxHp:500, damagePerHit:100, counterDmg:10,
+    xpReward:1500,
+    taunt:['Comfort is a cage. You love it.','Your habits are a lie.','Three days? You can\'t even manage one.'],
+  },
+  B: {
+    name:'The Shadow of Doubt', emoji:'🌑', rankTarget:'B',
+    desc:'It knows every weakness you have not yet conquered.',
+    challengeDesc:'Complete all 3 of your Big Three quests.',
+    challengeType:'big_three', challengeTarget:3,
+    maxHp:800, damagePerHit:160, counterDmg:20,
+    xpReward:3000,
+    taunt:['Your priorities are worthless.','Big Three? You can\'t finish one.','Doubt always wins. Always.'],
+  },
+  A: {
+    name:'Apex Predator', emoji:'🐉', rankTarget:'A',
+    desc:'Born from 99% of humanity\'s abandoned potential.',
+    challengeDesc:'Earn XP 5 consecutive days with zero penalties.',
+    challengeType:'clean_streak', challengeTarget:5,
+    maxHp:1200, damagePerHit:240, counterDmg:35,
+    xpReward:6000,
+    taunt:['You failed yesterday. You\'ll fail today.','Penalties define you.','Five clean days? Impossible for you.'],
+  },
+  S: {
+    name:'The Void King', emoji:'☠️', rankTarget:'S',
+    desc:'The last guardian before Monarch. The hardest test.',
+    challengeDesc:'Log XP every single day for 7 consecutive days.',
+    challengeType:'weekly_active', challengeTarget:7,
+    maxHp:2000, damagePerHit:400, counterDmg:60,
+    xpReward:12000,
+    taunt:['Seven days of consistency? You will break.','The void swallows weak wills.','I have waited. I will wait longer.'],
+  },
 };
+
+// ─── BOSS CHALLENGE PROGRESS ─────────────────────────────────────────────────
+function getBossChallengeProgress(boss, state) {
+  if (!boss) return { current:0, target:1 };
+  const today = todayStr();
+  switch(boss.challengeType) {
+    case 'daily_quests': {
+      const done = (state.quests.daily||[]).filter(q => q.completed && q.date === today).length;
+      return { current: Math.min(done, boss.challengeTarget), target: boss.challengeTarget };
+    }
+    case 'habit_streaks': {
+      const qualified = (state.habits||[]).filter(h => (h.streak||0) >= 3).length;
+      return { current: Math.min(qualified, boss.challengeTarget), target: boss.challengeTarget };
+    }
+    case 'big_three': {
+      const bigThree = state.bigThree || [];
+      if (bigThree.length === 0) return { current: 0, target: boss.challengeTarget };
+      const allQuests = [
+        ...(state.quests.daily||[]),
+        ...(state.quests.weekly||[]),
+        ...(state.quests.main||[]),
+        ...(state.quests.side||[]),
+      ];
+      const done = bigThree.filter(id => {
+        const q = allQuests.find(q => q.id === id);
+        return q && q.completed;
+      }).length;
+      return { current: done, target: boss.challengeTarget };
+    }
+    case 'clean_streak': {
+      const xpLog = state.xpLog || [];
+      const penaltyLog = state.penaltyLog || [];
+      let streak = 0;
+      for (let i = 0; i < boss.challengeTarget + 3; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0,10);
+        const hasXP = (xpLog.find(e => e.date === d)?.xp || 0) > 0;
+        const hasPenalty = penaltyLog.some(p => p.date === d);
+        if (hasXP && !hasPenalty) streak++;
+        else break;
+      }
+      return { current: Math.min(streak, boss.challengeTarget), target: boss.challengeTarget };
+    }
+    case 'weekly_active': {
+      const xpLog = state.xpLog || [];
+      let streak = 0;
+      for (let i = 0; i < boss.challengeTarget + 3; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0,10);
+        if ((xpLog.find(e => e.date === d)?.xp || 0) > 0) streak++;
+        else break;
+      }
+      return { current: Math.min(streak, boss.challengeTarget), target: boss.challengeTarget };
+    }
+    default: return { current: 0, target: boss.challengeTarget };
+  }
+}
 
 // ─── SYSTEM VOICE MESSAGES (inactivity) ───────────────────────────────────────
 const SYSTEM_VOICE = [
@@ -695,6 +790,7 @@ const buildInitialState = () => ({
   reflections: [],    // [{ id, questName, text, date }]
   oath: { text:'', lockedAt:null, completed:false },
   bossDefeated: [],   // array of rank names boss was defeated for
+  bossDungeon: {},    // { [rank]: { hp, attackPoints, phase, playerHp } }
   lastActivity: null, // timestamp of last user action
   weeklyReviews: [],  // [{ weekId, highlights, lowlights, focusNext, letter }]
 });
@@ -762,13 +858,35 @@ function reducer(state, action) {
         }
       }
 
+      // Handle rank change: carry AP forward to new rank dungeon + grant 100 bonus AP
+      let newBossDungeon = state.bossDungeon || {};
+      if (rankChanged && BOSS_DATA[newRank]) {
+        const oldDungeon = newBossDungeon[rank] || {};
+        const carriedAP = oldDungeon.attackPoints || 0;
+        const existingNewDungeon = newBossDungeon[newRank] || {
+          hp: BOSS_DATA[newRank].maxHp,
+          attackPoints: 0,
+          phase: 'locked',
+          playerHp: 100,
+        };
+        const bonusAP = 100;
+        newBossDungeon = {
+          ...newBossDungeon,
+          [newRank]: {
+            ...existingNewDungeon,
+            attackPoints: Math.round((existingNewDungeon.attackPoints + carriedAP + bonusAP) * 10) / 10,
+          },
+        };
+      }
+
       return {
         ...state,
         hunter: { ...state.hunter, totalXP, level, xpToNextLevel, rank:newRank, title, coins:newCoins, boostMult:newBoostMult, boostEnd:newBoostEnd,
           maxHp: RANK_MAX_HP[newRank] || 100,
-          hp: rankChanged ? RANK_MAX_HP[newRank] : (state.hunter.hp ?? state.hunter.maxHp ?? 100), // full heal on rank up
+          hp: rankChanged ? RANK_MAX_HP[newRank] : (state.hunter.hp ?? state.hunter.maxHp ?? 100),
         },
-        _leveled: leveled ? { level, rank:newRank, title, rankChanged, boostMult:newBoostMult, boostEnd:newBoostEnd, boostedAmount } : null,
+        bossDungeon: newBossDungeon,
+        _leveled: leveled ? { level, rank:newRank, title, rankChanged, boostMult:newBoostMult, boostEnd:newBoostEnd, boostedAmount, apBonus: rankChanged ? 100 : 0 } : null,
       };
     }
     case 'PURCHASE_REWARD': {
@@ -905,6 +1023,79 @@ function reducer(state, action) {
     }
     case 'DEFEAT_BOSS': {
       return { ...state, bossDefeated: [...(state.bossDefeated||[]), action.payload], lastActivity: Date.now() };
+    }
+    case 'EARN_ATTACK_POINTS': {
+      const { rank, amount } = action.payload;
+      if (!rank || !BOSS_DATA[rank]) return state;
+      const dungeon = state.bossDungeon || {};
+      const existing = dungeon[rank] || { hp: BOSS_DATA[rank].maxHp, attackPoints: 0, phase: 'locked', playerHp: 100 };
+      if (existing.phase === 'defeated') return state;
+      return {
+        ...state,
+        bossDungeon: {
+          ...dungeon,
+          [rank]: { ...existing, attackPoints: Math.round((existing.attackPoints + amount) * 10) / 10 }
+        }
+      };
+    }
+    case 'UNLOCK_BOSS_DUNGEON': {
+      const rank = action.payload;
+      if (!BOSS_DATA[rank]) return state;
+      const dungeon = state.bossDungeon || {};
+      const existing = dungeon[rank] || { hp: BOSS_DATA[rank].maxHp, attackPoints: 0, phase: 'locked', playerHp: 100 };
+      if (existing.phase !== 'locked') return state;
+      return {
+        ...state,
+        bossDungeon: { ...dungeon, [rank]: { ...existing, phase: 'unlocked' } }
+      };
+    }
+    case 'ATTACK_BOSS_DUNGEON': {
+      const rank = action.payload;
+      if (!BOSS_DATA[rank]) return state;
+      const dungeon = state.bossDungeon || {};
+      const entry = dungeon[rank];
+      if (!entry || entry.phase !== 'unlocked') return state;
+      if (entry.attackPoints < 1) return state;
+
+      const boss = BOSS_DATA[rank];
+      const newAP = Math.round((entry.attackPoints - 1) * 10) / 10;
+      const newBossHp = Math.max(0, entry.hp - 1);
+      const bossDefeated = newBossHp <= 0;
+
+      // Counter-attack: fires when boss HP is below 20% of max
+      const threshold = boss.maxHp * 0.2;
+      const bossCounters = !bossDefeated && newBossHp <= threshold;
+      const counterDmg = bossCounters ? boss.counterDmg : 0;
+      const newPlayerHp = Math.max(0, (entry.playerHp ?? 100) - counterDmg);
+      const playerDead = newPlayerHp <= 0 && !bossDefeated;
+
+      const newPhase = bossDefeated ? 'defeated' : playerDead ? 'player_dead' : 'unlocked';
+
+      return {
+        ...state,
+        bossDungeon: {
+          ...dungeon,
+          [rank]: { ...entry, attackPoints: newAP, hp: newBossHp, playerHp: newPlayerHp, phase: newPhase }
+        },
+        bossDefeated: bossDefeated ? [...(state.bossDefeated||[]), rank] : (state.bossDefeated||[]),
+        _bossEvent: bossDefeated ? { type:'defeated', rank, xpReward: boss.xpReward }
+                  : playerDead  ? { type:'player_dead', rank }
+                  : bossCounters ? { type:'counter', rank, dmg: counterDmg }
+                  : null
+      };
+    }
+    case 'REVIVE_PLAYER_DUNGEON': {
+      const rank = action.payload;
+      const dungeon = state.bossDungeon || {};
+      const entry = dungeon[rank];
+      if (!entry) return state;
+      return {
+        ...state,
+        bossDungeon: { ...dungeon, [rank]: { ...entry, playerHp: 100, phase: 'unlocked' } }
+      };
+    }
+    case 'CLEAR_BOSS_EVENT': {
+      return { ...state, _bossEvent: null };
     }
     case 'UPDATE_ACTIVITY': {
       return { ...state, lastActivity: Date.now() };
@@ -1390,6 +1581,23 @@ function LevelUpOverlay({ data, onClose }) {
                       })()
                     : 'PERMANENT'
                   }
+                </div>
+              </div>
+            )}
+            {data.rankChanged && data.apBonus > 0 && (
+              <div style={{
+                marginTop:14, padding:'12px 20px',
+                background: 'rgba(231,76,60,0.1)',
+                border: '1px solid rgba(231,76,60,0.4)',
+                borderRadius:10,
+                boxShadow: '0 0 16px rgba(231,76,60,0.2)'
+              }}>
+                <div style={{ fontSize:11, color:'rgba(231,76,60,0.6)', letterSpacing:4, marginBottom:6 }}>⚔️ DUNGEON REWARD</div>
+                <div className="cinzel" style={{ fontSize:26, color:'var(--crimson)', fontWeight:900, textShadow:'0 0 16px #E74C3C' }}>
+                  +{data.apBonus} ATTACK POINTS
+                </div>
+                <div style={{ fontSize:11, color:'rgba(231,76,60,0.6)', marginTop:4 }}>
+                  Carried to your new rank's dungeon · All previous AP preserved
                 </div>
               </div>
             )}
@@ -2724,97 +2932,314 @@ function ReflectionModal({ questName, onSave, onSkip }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BOSS FIGHT OVERLAY
+// BOSS DUNGEON SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
-function BossFightOverlay({ boss, onDefeat, onFlee }) {
-  const [hp, setHp] = useState(100);
-  const [attacking, setAttacking] = useState(false);
-  const [defeated, setDefeated] = useState(false);
-  const [hits, setHits] = useState(0);
+function BossDungeonScreen({ state, dispatch, addXP, showNotif }) {
+  const rank = state.hunter.rank;
+  const boss = BOSS_DATA[rank];
+  const dungeon = state.bossDungeon?.[rank] || { hp: boss?.maxHp || 0, attackPoints: 0, phase: 'locked', playerHp: 100 };
+  const prog = boss ? getBossChallengeProgress(boss, state) : { current: 0, target: 1 };
+  const isUnlocked = dungeon.phase === 'unlocked';
+  const isDefeated = dungeon.phase === 'defeated';
+  const isPlayerDead = dungeon.phase === 'player_dead';
+  const [showCounterFlash, setShowCounterFlash] = useState(false);
+  const [lastAP, setLastAP] = useState(null);
 
-  const attack = () => {
-    if (attacking || defeated) return;
-    setAttacking(true);
-    const dmg = Math.floor(Math.random() * 20) + 15;
-    const newHp = Math.max(0, hp - dmg);
-    setTimeout(() => {
-      setHp(newHp);
-      setHits(h => h + 1);
-      setAttacking(false);
-      if (newHp <= 0) setDefeated(true);
-    }, 400);
+  const bossHpPct = boss ? Math.max(0, (dungeon.hp / boss.maxHp) * 100) : 0;
+  const isCritical = bossHpPct <= 20 && bossHpPct > 0;
+  const bossColor = bossHpPct > 60 ? '#E74C3C' : bossHpPct > 30 ? '#F39C12' : '#9B59B6';
+  const playerHpColor = (dungeon.playerHp ?? 100) > 60 ? '#2ECC71' : (dungeon.playerHp ?? 100) > 30 ? '#F39C12' : '#E74C3C';
+
+  const ap = dungeon.attackPoints || 0;
+  const canAttack = isUnlocked && ap >= 1;
+
+  // Show counter flash when boss is in critical range
+  useEffect(() => {
+    if (isCritical) {
+      const t = setInterval(() => setShowCounterFlash(f => !f), 800);
+      return () => clearInterval(t);
+    } else {
+      setShowCounterFlash(false);
+    }
+  }, [isCritical]);
+
+  const handleAttack = () => {
+    if (!canAttack) return;
+    setLastAP(ap - 1);
+    dispatch({ type:'ATTACK_BOSS_DUNGEON', payload: rank });
   };
 
-  const bossColor = hp > 60 ? '#E74C3C' : hp > 30 ? '#F39C12' : '#9B59B6';
+  // All past bosses for history section
+  const allBosses = Object.entries(BOSS_DATA);
+
+  if (!boss) {
+    return (
+      <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24 }}>
+        <div style={{ fontSize:48, marginBottom:16 }}>🏆</div>
+        <div className="cinzel" style={{ fontSize:18, color:'var(--gold)', letterSpacing:3, marginBottom:8 }}>ALL BOSSES CLEARED</div>
+        <div style={{ fontSize:13, color:'var(--text-dim)', textAlign:'center', lineHeight:1.7 }}>
+          You have reached the peak. No more bosses remain for your rank.
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.96)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, backdropFilter:'blur(8px)' }}>
-      {/* Background particles */}
-      {[...Array(12)].map((_,i) => (
-        <div key={i} style={{ position:'absolute', left:`${Math.random()*100}%`, top:`${Math.random()*100}%`, width:2, height:2, background:bossColor, borderRadius:'50%', animation:`breathe ${1+Math.random()*2}s ease-in-out ${Math.random()}s infinite` }}/>
-      ))}
+    <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      {/* Header */}
+      <div style={{ padding:'12px 16px 0', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+          <span style={{ fontSize:20 }}>⚔️</span>
+          <div className="cinzel" style={{ fontSize:17, color:'var(--crimson)', letterSpacing:3 }}>BOSS DUNGEON</div>
+          <div style={{ marginLeft:'auto' }}>
+            <span style={{ fontSize:9, color: isDefeated ? '#2ECC71' : isUnlocked ? 'var(--gold)' : 'var(--text-dim)', letterSpacing:2, fontFamily:'Cinzel,serif',
+              padding:'2px 8px', borderRadius:4,
+              background: isDefeated ? 'rgba(46,204,113,0.1)' : isUnlocked ? 'rgba(243,156,18,0.1)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${isDefeated ? 'rgba(46,204,113,0.3)' : isUnlocked ? 'rgba(243,156,18,0.3)' : 'rgba(255,255,255,0.08)'}`,
+            }}>
+              {isDefeated ? '✅ SLAIN' : isUnlocked ? '🔓 UNLOCKED' : '🔒 SEALED'}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      <div style={{ textAlign:'center', maxWidth:340, width:'100%' }}>
-        <div style={{ fontSize:9, color:'rgba(231,76,60,0.6)', letterSpacing:6, marginBottom:12 }}>BOSS ENCOUNTER</div>
+      <div className="scrollable" style={{ flex:1, padding:'10px 16px 24px', display:'flex', flexDirection:'column', gap:12 }}>
 
-        {defeated ? (
-          <>
-            <div style={{ fontSize:80, marginBottom:8, animation:'levelUpFlash 0.8s ease-out' }}>💥</div>
-            <div className="cinzel" style={{ fontSize:28, color:'#FFD700', textShadow:'0 0 30px #FFD700', marginBottom:6 }}>BOSS DEFEATED</div>
-            <div style={{ fontSize:14, color:'var(--text)', marginBottom:16 }}>{boss.name} has fallen.</div>
-            <div className="cinzel" style={{ fontSize:20, color:'var(--gold)', marginBottom:24 }}>+{boss.xpReward.toLocaleString()} XP</div>
-            <button onClick={onDefeat} style={{ padding:'14px 40px', borderRadius:8, cursor:'pointer', background:'rgba(255,215,0,0.15)', border:'2px solid #FFD700', color:'#FFD700', fontFamily:'Cinzel,serif', fontSize:14, letterSpacing:3 }}>
-              CLAIM VICTORY
-            </button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize:72, marginBottom:8, animation: attacking ? 'bossHit 0.3s ease-out' : 'bossFloat 3s ease-in-out infinite' }} className={attacking ? 'boss-hit' : 'boss-anim'}>
-              {boss.emoji}
-            </div>
-            <div className="cinzel" style={{ fontSize:20, color:bossColor, marginBottom:4, textShadow:`0 0 20px ${bossColor}` }}>
-              {boss.name}
-            </div>
-            <div style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic', marginBottom:16 }}>{boss.desc}</div>
-
-            {/* Boss HP Bar */}
-            <div style={{ marginBottom:20 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, fontSize:10 }}>
-                <span style={{ color:'var(--text-dim)' }}>BOSS HP</span>
-                <span style={{ color:bossColor }}>{hp}%</span>
+        {/* ── BOSS CARD ── */}
+        <div className="panel" style={{
+          padding:0, overflow:'hidden',
+          borderColor: isDefeated ? 'rgba(46,204,113,0.4)' : isCritical ? 'rgba(155,89,182,0.6)' : isUnlocked ? `${bossColor}55` : 'rgba(255,255,255,0.08)',
+          boxShadow: isCritical ? `0 0 20px rgba(155,89,182,0.3)` : isUnlocked ? `0 0 16px ${bossColor}22` : 'none',
+        }}>
+          {/* Boss ambient banner */}
+          <div style={{ height:4, background: isDefeated ? '#2ECC71' : isCritical ? 'linear-gradient(90deg,#9B59B6,#E74C3C,#9B59B6)' : `linear-gradient(90deg,${bossColor}88,${bossColor},${bossColor}88)`, animation: isCritical ? 'shimmer 1.5s linear infinite' : 'none', backgroundSize:'200%' }}/>
+          <div style={{ padding:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:12 }}>
+              <div style={{
+                fontSize:48, lineHeight:1,
+                animation: isDefeated ? 'none' : isCritical ? 'bossShake 0.5s ease-in-out infinite' : 'bossFloat 3s ease-in-out infinite',
+                filter: isDefeated ? 'grayscale(1) opacity(0.4)' : `drop-shadow(0 0 12px ${bossColor}88)`,
+              }}>{boss.emoji}</div>
+              <div style={{ flex:1 }}>
+                <div className="cinzel" style={{ fontSize:16, color: isDefeated ? '#2ECC71' : bossColor, marginBottom:3,
+                  textShadow: isDefeated ? 'none' : `0 0 12px ${bossColor}66` }}>{boss.name}</div>
+                <div style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic', lineHeight:1.5 }}>{boss.desc}</div>
+                {isDefeated && <div style={{ fontSize:10, color:'#2ECC71', marginTop:4 }}>✅ Defeated — Dungeon cleared</div>}
               </div>
-              <div style={{ height:12, background:'rgba(255,255,255,0.06)', borderRadius:6, overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${hp}%`, background:`linear-gradient(90deg, ${bossColor}88, ${bossColor})`, borderRadius:6, transition:'width 0.4s ease', boxShadow:`0 0 10px ${bossColor}66` }}/>
+            </div>
+
+            {/* Boss HP */}
+            {!isDefeated && (
+              <div>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5, fontSize:10 }}>
+                  <span style={{ color: isCritical ? '#9B59B6' : 'var(--text-dim)', fontFamily:'Cinzel,serif', letterSpacing:1 }}>
+                    {isCritical ? '⚠️ BOSS RAGING — COUNTER ACTIVE' : 'BOSS HP'}
+                  </span>
+                  <span className="cinzel" style={{ color: bossColor, fontWeight:900 }}>{dungeon.hp} / {boss.maxHp}</span>
+                </div>
+                <div style={{ height:18, background:'rgba(255,255,255,0.04)', borderRadius:9, overflow:'hidden', border:`1px solid ${bossColor}33`, position:'relative' }}>
+                  <div style={{
+                    height:'100%', width:`${bossHpPct}%`,
+                    background: isCritical
+                      ? 'linear-gradient(90deg,#9B59B6,#E74C3C)'
+                      : `linear-gradient(90deg,${bossColor}77,${bossColor})`,
+                    borderRadius:9, transition:'width 0.6s ease',
+                    boxShadow:`0 0 10px ${bossColor}66`,
+                    animation: isCritical ? 'shimmer 1.5s linear infinite' : 'none',
+                    backgroundSize:'200%',
+                  }}/>
+                  {/* 20% threshold marker */}
+                  <div style={{ position:'absolute', top:0, bottom:0, left:'20%', width:2, background:'rgba(155,89,182,0.6)', zIndex:1 }}/>
+                  <div style={{ position:'absolute', top:'50%', left:'20%', transform:'translate(4px,-50%)', fontSize:7, color:'rgba(155,89,182,0.8)', whiteSpace:'nowrap' }}>20%</div>
+                </div>
+                {isCritical && (
+                  <div style={{ fontSize:9, color:'rgba(155,89,182,0.8)', marginTop:5, letterSpacing:1, textAlign:'center', animation:'breathe 1s ease-in-out infinite' }}>
+                    ⚡ Boss counters every attack — each strike costs you {boss.counterDmg} HP
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── CHALLENGE GATE ── */}
+        {!isDefeated && (
+          <div className="panel" style={{ padding:14, borderColor: isUnlocked ? 'rgba(46,204,113,0.4)' : 'rgba(255,255,255,0.08)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+              <span style={{ fontSize:14 }}>{isUnlocked ? '✅' : '🔒'}</span>
+              <div className="cinzel" style={{ fontSize:10, color: isUnlocked ? '#2ECC71' : 'var(--text-dim)', letterSpacing:2 }}>
+                {isUnlocked ? 'SEAL BROKEN — FIGHT ACTIVE' : 'UNLOCK REQUIREMENT'}
               </div>
             </div>
-
-            <div style={{ padding:'10px 14px', marginBottom:20, borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', fontSize:11, color:'var(--text-dim)', lineHeight:1.6 }}>
-              <span style={{ color:'var(--gold)' }}>⚔️ Challenge:</span> {boss.challenge}
+            <div style={{ fontSize:12, color:'var(--text)', marginBottom:10, lineHeight:1.6 }}>{boss.challengeDesc}</div>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, fontSize:10 }}>
+              <span style={{ color:'var(--text-dim)' }}>PROGRESS</span>
+              <span className="cinzel" style={{ color: prog.current >= prog.target ? '#2ECC71' : 'var(--gold)' }}>{prog.current} / {prog.target}</span>
             </div>
-
-            <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
-              <button onClick={attack} style={{
-                padding:'14px 32px', borderRadius:8, cursor: attacking ? 'default' : 'pointer',
-                background:`rgba(${hp>60?'231,76,60':hp>30?'243,156,18':'155,89,182'},0.2)`,
-                border:`2px solid ${bossColor}`,
-                color:bossColor, fontFamily:'Cinzel,serif', fontSize:13, letterSpacing:2,
-                opacity: attacking ? 0.6 : 1, transition:'all 0.2s',
-                boxShadow: attacking ? 'none' : `0 0 15px ${bossColor}44`,
-              }}>
-                {attacking ? '...' : '⚔️ ATTACK'}
-              </button>
-              <button onClick={onFlee} style={{ padding:'14px 24px', borderRadius:8, cursor:'pointer', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text-dim)', fontSize:11 }}>
-                FLEE
-              </button>
+            <div style={{ height:10, background:'rgba(255,255,255,0.04)', borderRadius:5, overflow:'hidden', border:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ height:'100%', width:`${Math.min(100,(prog.current/prog.target)*100)}%`,
+                background: prog.current >= prog.target ? 'linear-gradient(90deg,#2ECC71,#27ae60)' : 'linear-gradient(90deg,#F39C1288,#F39C12)',
+                borderRadius:5, transition:'width 0.8s ease',
+                boxShadow: prog.current >= prog.target ? '0 0 8px #2ECC7188' : '0 0 4px #F39C1244' }}/>
             </div>
-            <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:12 }}>Hits landed: {hits}</div>
-          </>
+            <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:8 }}>
+              {[...Array(prog.target)].map((_,i)=>(
+                <div key={i} style={{
+                  width:26, height:26, borderRadius:6,
+                  background: i < prog.current ? (isUnlocked?'#2ECC71':'#F39C12') : 'rgba(255,255,255,0.04)',
+                  border:`1.5px solid ${i < prog.current ? (isUnlocked?'#2ECC71':'#F39C12') : 'rgba(255,255,255,0.1)'}`,
+                  display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, transition:'all 0.3s',
+                  boxShadow: i < prog.current ? `0 0 6px ${isUnlocked?'#2ECC71':'#F39C12'}66` : 'none',
+                }}>
+                  {i < prog.current ? '✓' : <span style={{ color:'rgba(255,255,255,0.2)', fontSize:9 }}>{i+1}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
+
+        {/* ── ATTACK POINTS ── */}
+        {!isDefeated && (
+          <div className="panel" style={{ padding:14, borderColor: isUnlocked ? 'rgba(243,156,18,0.3)' : 'rgba(255,255,255,0.06)' }}>
+            <div className="cinzel" style={{ fontSize:10, color:'var(--gold)', letterSpacing:3, marginBottom:10 }}>⚡ ATTACK POINTS</div>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5, fontSize:10 }}>
+                  <span style={{ color:'var(--text-dim)' }}>STORED AP</span>
+                  <span className="cinzel" style={{ color:'var(--gold)', fontSize:16, fontWeight:900 }}>{ap.toFixed(1)}</span>
+                </div>
+                <div style={{ height:12, background:'rgba(255,255,255,0.04)', borderRadius:6, overflow:'hidden', border:'1px solid rgba(243,156,18,0.15)' }}>
+                  <div style={{ height:'100%', width:`${Math.min(100,(ap/Math.max(ap+10,50))*100)}%`,
+                    background:'linear-gradient(90deg,#b8860b,#F39C12,#FFD700)',
+                    borderRadius:6, transition:'width 0.4s',
+                    boxShadow:'0 0 8px rgba(243,156,18,0.5)' }}/>
+                </div>
+              </div>
+              <div style={{ textAlign:'center', padding:'8px 12px', borderRadius:8, background:'rgba(243,156,18,0.06)', border:'1px solid rgba(243,156,18,0.2)', flexShrink:0 }}>
+                <div className="cinzel" style={{ fontSize:18, color:'var(--gold)', lineHeight:1 }}>{Math.floor(ap)}</div>
+                <div style={{ fontSize:8, color:'var(--text-dim)', letterSpacing:1, marginTop:3 }}>ATTACKS</div>
+              </div>
+            </div>
+            <div style={{ fontSize:10, color:'var(--text-dim)', lineHeight:1.7, borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:8 }}>
+              <span style={{ color:'var(--mana)' }}>0.1%</span> of every XP you earn converts to AP · <span style={{ color:'var(--gold)' }}>1 AP</span> = <span style={{ color:bossColor }}>1 damage</span> to boss
+              {!isUnlocked && <div style={{ color:'rgba(255,255,255,0.3)', marginTop:4 }}>AP accumulates even while boss is sealed.</div>}
+            </div>
+          </div>
+        )}
+
+        {/* ── PLAYER HP (when in fight) ── */}
+        {isUnlocked && !isDefeated && (
+          <div className="panel" style={{ padding:14, borderColor: `${playerHpColor}33` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:2 }}>YOUR DUNGEON HP</div>
+              <span className="cinzel" style={{ fontSize:14, color:playerHpColor, fontWeight:900 }}>{dungeon.playerHp ?? 100} / 100</span>
+            </div>
+            <div style={{ height:10, background:'rgba(255,255,255,0.04)', borderRadius:5, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${dungeon.playerHp ?? 100}%`,
+                background:`linear-gradient(90deg,${playerHpColor}88,${playerHpColor})`,
+                borderRadius:5, transition:'width 0.4s', boxShadow:`0 0 6px ${playerHpColor}66` }}/>
+            </div>
+            {(dungeon.playerHp ?? 100) <= 30 && (
+              <div style={{ fontSize:9, color:'var(--crimson)', marginTop:6, letterSpacing:1, animation:'breathe 1s ease-in-out infinite' }}>
+                ⚠️ LOW HP — Consider retreating before you fall
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ATTACK BUTTON ── */}
+        {isUnlocked && !isDefeated && !isPlayerDead && (
+          <button onClick={handleAttack} disabled={!canAttack} style={{
+            width:'100%', padding:'16px', borderRadius:10, cursor: canAttack ? 'pointer' : 'not-allowed',
+            background: canAttack
+              ? isCritical
+                ? 'linear-gradient(135deg,rgba(155,89,182,0.25),rgba(231,76,60,0.15))'
+                : `linear-gradient(135deg,rgba(231,76,60,0.2),rgba(243,156,18,0.1))`
+              : 'rgba(255,255,255,0.03)',
+            border: canAttack ? `2px solid ${isCritical?'#9B59B6':bossColor}` : '2px solid rgba(255,255,255,0.08)',
+            color: canAttack ? (isCritical ? '#9B59B6' : bossColor) : 'rgba(255,255,255,0.2)',
+            fontFamily:'Cinzel,serif', fontSize:15, letterSpacing:3, transition:'all 0.2s',
+            boxShadow: canAttack ? `0 0 20px ${isCritical?'rgba(155,89,182,0.3)':bossColor+'33'}` : 'none',
+            opacity: canAttack ? 1 : 0.5,
+          }}>
+            {canAttack
+              ? isCritical ? `⚡ STRIKE — 1 DMG · BOSS COUNTERS ${boss.counterDmg} HP` : '⚔️ STRIKE — USE 1 AP · DEAL 1 DAMAGE'
+              : `⚔️ NOT ENOUGH AP (need 1, have ${ap.toFixed(1)})`
+            }
+          </button>
+        )}
+
+        {/* ── PLAYER DEAD STATE ── */}
+        {isPlayerDead && (
+          <div className="panel" style={{ padding:20, textAlign:'center', borderColor:'rgba(231,76,60,0.4)', background:'rgba(231,76,60,0.05)' }}>
+            <div style={{ fontSize:48, marginBottom:10 }}>💀</div>
+            <div className="cinzel" style={{ fontSize:20, color:'var(--crimson)', marginBottom:8 }}>YOU FELL</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6, lineHeight:1.7 }}>
+              {boss.name} drained your dungeon HP to zero.<br/>Your attack points and boss HP are preserved.
+            </div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginBottom:18 }}>
+              Keep earning AP through quests and habits to return stronger.
+            </div>
+            <button onClick={() => dispatch({ type:'REVIVE_PLAYER_DUNGEON', payload: rank })} style={{
+              padding:'12px 32px', borderRadius:8, cursor:'pointer',
+              background:'rgba(79,195,247,0.12)', border:'2px solid var(--mana)',
+              color:'var(--mana)', fontFamily:'Cinzel,serif', fontSize:12, letterSpacing:2
+            }}>
+              ⚔️ REVIVE & CONTINUE
+            </button>
+          </div>
+        )}
+
+        {/* ── DEFEATED STATE ── */}
+        {isDefeated && (
+          <div className="panel" style={{ padding:20, textAlign:'center', borderColor:'rgba(255,215,0,0.5)', background:'rgba(255,215,0,0.04)', boxShadow:'0 0 20px rgba(255,215,0,0.15)' }}>
+            <div style={{ fontSize:56, marginBottom:10 }}>🏆</div>
+            <div className="cinzel" style={{ fontSize:22, color:'#FFD700', textShadow:'0 0 20px #FFD700', marginBottom:8 }}>BOSS SLAIN</div>
+            <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', marginBottom:16, lineHeight:1.7 }}>
+              {boss.name} has been defeated.<br/>This dungeon is cleared forever.
+            </div>
+            <div className="cinzel" style={{ fontSize:18, color:'var(--gold)' }}>+{boss.xpReward.toLocaleString()} XP CLAIMED</div>
+          </div>
+        )}
+
+        {/* ── PAST BOSSES ── */}
+        <div className="panel" style={{ padding:14 }}>
+          <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>ALL DUNGEONS</div>
+          {allBosses.map(([r, b]) => {
+            const def = (state.bossDefeated||[]).includes(r);
+            const unl = RANKS.indexOf(state.hunter.rank) >= RANKS.indexOf(r);
+            const dun = state.bossDungeon?.[r];
+            const hp = dun ? dun.hp : b.maxHp;
+            const hpPct = Math.max(0, (hp / b.maxHp) * 100);
+            const c = RANK_COLORS[r] || '#6a7a9a';
+            return (
+              <div key={r} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 10px', marginBottom:5, borderRadius:7,
+                background: def ? 'rgba(46,204,113,0.05)' : r === rank ? `${c}0a` : 'rgba(255,255,255,0.02)',
+                border:`1px solid ${def ? 'rgba(46,204,113,0.25)' : r === rank ? `${c}33` : 'rgba(255,255,255,0.05)'}` }}>
+                <span style={{ fontSize:18, opacity: unl ? 1 : 0.25 }}>{b.emoji}</span>
+                <div style={{ flex:1 }}>
+                  <div className="cinzel" style={{ fontSize:10, color: def ? '#2ECC71' : unl ? c : 'var(--text-dim)' }}>{b.name}</div>
+                  {unl && !def && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3 }}>
+                      <div style={{ flex:1, height:3, background:'rgba(255,255,255,0.05)', borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${hpPct}%`, background:c, borderRadius:2 }}/>
+                      </div>
+                      <span style={{ fontSize:8, color:'var(--text-dim)', whiteSpace:'nowrap' }}>{hp}/{b.maxHp} HP</span>
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize:11 }}>
+                  {def ? '✅' : r === rank ? <span className="cinzel" style={{ fontSize:9, color:c }}>CURRENT</span> : unl ? '📖' : '🔒'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
       </div>
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM VOICE OVERLAY (inactivity warning)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3014,21 +3439,26 @@ function GrowthScreen({ state, dispatch, addXP, showNotif }) {
             <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:16 }}>RANK PROGRESSION ROADMAP</div>
             <MilestoneRoadmap state={state}/>
             <div style={{ marginTop:20, borderTop:'1px solid var(--border)', paddingTop:16 }}>
-              <div className="cinzel" style={{ fontSize:10, color:'var(--gold)', letterSpacing:3, marginBottom:12 }}>BOSS ENCOUNTERS</div>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--gold)', letterSpacing:3, marginBottom:8 }}>BOSS ENCOUNTERS</div>
+              <div style={{ fontSize:11, color:'var(--text-dim)', lineHeight:1.7, marginBottom:10 }}>
+                Each rank has a boss dungeon. Earn Attack Points through quests and battle your boss in the ⚔️ DUNGEON tab.
+              </div>
               {Object.entries(BOSS_DATA).map(([r, boss]) => {
                 const defeated = (state.bossDefeated||[]).includes(r);
                 const unlocked = RANKS.indexOf(state.hunter.rank) >= RANKS.indexOf(r);
                 const color = RANK_COLORS[r] || '#6a7a9a';
+                const dun = state.bossDungeon?.[r];
+                const hpPct = dun ? Math.round((dun.hp / boss.maxHp) * 100) : 100;
                 return (
-                  <div key={r} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px', marginBottom:6, borderRadius:8, background: defeated ? 'rgba(46,204,113,0.05)' : unlocked ? `${color}08` : 'rgba(255,255,255,0.02)', border:`1px solid ${defeated ? 'rgba(46,204,113,0.3)' : unlocked ? `${color}33` : 'rgba(255,255,255,0.06)'}` }}>
-                    <div style={{ fontSize:24, opacity: unlocked ? 1 : 0.3 }}>{boss.emoji}</div>
+                  <div key={r} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', marginBottom:5, borderRadius:7,
+                    background: defeated ? 'rgba(46,204,113,0.05)' : unlocked ? `${color}08` : 'rgba(255,255,255,0.02)',
+                    border:`1px solid ${defeated ? 'rgba(46,204,113,0.2)' : unlocked ? `${color}22` : 'rgba(255,255,255,0.05)'}` }}>
+                    <span style={{ fontSize:18, opacity: unlocked ? 1 : 0.25 }}>{boss.emoji}</span>
                     <div style={{ flex:1 }}>
-                      <div className="cinzel" style={{ fontSize:11, color: defeated ? '#2ECC71' : unlocked ? color : 'var(--text-dim)' }}>{boss.name}</div>
-                      <div style={{ fontSize:10, color:'var(--text-dim)' }}>{boss.challenge}</div>
+                      <div className="cinzel" style={{ fontSize:10, color: defeated ? '#2ECC71' : unlocked ? color : 'var(--text-dim)' }}>{boss.name}</div>
+                      {unlocked && !defeated && <div style={{ fontSize:9, color:'var(--text-dim)' }}>Boss HP: {hpPct}%</div>}
                     </div>
-                    <div style={{ textAlign:'right' }}>
-                      {defeated ? <span style={{ fontSize:16 }}>✅</span> : <span className="cinzel" style={{ fontSize:9, color: unlocked ? color : 'var(--text-dim)' }}>{unlocked ? `${boss.xpReward.toLocaleString()} XP` : '🔒'}</span>}
-                    </div>
+                    <span>{defeated ? '✅' : unlocked ? <span style={{ fontSize:9, color:color }}>{boss.xpReward.toLocaleString()} XP</span> : '🔒'}</span>
                   </div>
                 );
               })}
@@ -7432,6 +7862,7 @@ const NAV_TABS = [
   { id:'health',     label:'HEALTH',     icon: Activity },
   { id:'mind',       label:'MIND',       icon: Brain },
   { id:'habits',     label:'HABITS',     icon: Flame },
+  { id:'dungeon',    label:'DUNGEON',    icon: Swords },
   { id:'growth',     label:'GROWTH',     icon: TrendingUp },
   { id:'journal',    label:'JOURNAL',    icon: ScrollText },
   { id:'rewards',    label:'REWARDS',    icon: Star },
@@ -7709,6 +8140,11 @@ export default function App() {
     const displayAmount = Math.round(amount * mult);
     dispatch({ type:'GAIN_XP', payload: amount });
     dispatch({ type:'LOG_DAILY_XP', payload: displayAmount });
+    // 0.1% of every XP gain converts to attack points for current rank dungeon
+    const apGain = Math.round(displayAmount * 0.001 * 10) / 10;
+    if (apGain > 0) {
+      dispatch({ type:'EARN_ATTACK_POINTS', payload: { rank: hunter.rank, amount: apGain } });
+    }
     playSound('xpGain', soundEnabled);
     const id = Date.now() + Math.random();
     const x = Math.random() * 200 + 80;
@@ -7730,16 +8166,34 @@ export default function App() {
     }
   }, [loaded, state.onboarded]);
 
-  // Boss encounter check — trigger when rank-eligible and not yet defeated
+  // Boss dungeon: auto-unlock when challenge is met
   useEffect(() => {
     if (!loaded || !state.onboarded) return;
     const rank = state.hunter.rank;
     const boss = BOSS_DATA[rank];
-    if (boss && !(state.bossDefeated||[]).includes(rank)) {
-      const t = setTimeout(() => setShowBoss(boss), 3500);
-      return () => clearTimeout(t);
+    if (!boss) return;
+    const dungeon = state.bossDungeon?.[rank];
+    if (dungeon?.phase === 'defeated') return;
+    if (dungeon?.phase === 'locked' || !dungeon) {
+      const prog = getBossChallengeProgress(boss, state);
+      if (prog.current >= prog.target) {
+        dispatch({ type:'UNLOCK_BOSS_DUNGEON', payload: rank });
+        showNotif('⚔️ BOSS SEAL BROKEN — Dungeon tab unlocked!');
+      }
     }
-  }, [state.hunter.rank]);
+  }, [state.quests, state.habits, state.xpLog, state.penaltyLog, state.bigThree, loaded]);
+
+  // Handle boss fight events (defeat XP reward, player death notification)
+  useEffect(() => {
+    if (!state._bossEvent) return;
+    const ev = state._bossEvent;
+    if (ev.type === 'defeated') {
+      addXP(ev.xpReward, 'boss');
+      showNotif(`💥 BOSS DEFEATED · +${ev.xpReward.toLocaleString()} XP`);
+      playSound('levelUp', soundEnabled);
+    }
+    dispatch({ type:'CLEAR_BOSS_EVENT' });
+  }, [state._bossEvent]);
 
   // Detect level up
   useEffect(() => {
@@ -7761,7 +8215,6 @@ export default function App() {
 
   const [penaltyData, setPenaltyData] = useState(null);
   const [showDeath, setShowDeath] = useState(false);
-  const [showBoss, setShowBoss] = useState(null);
   const [showSystemVoice, setShowSystemVoice] = useState(null);
   const [pendingReflection, setPendingReflection] = useState(null);
 
@@ -7903,6 +8356,7 @@ export default function App() {
           {tab==='health'   && <HealthScreen {...screenProps}/>}
           {tab==='mind'     && <MindScreen {...screenProps}/>}
           {tab==='habits'   && <HabitsScreen {...screenProps}/>}
+          {tab==='dungeon'  && <BossDungeonScreen {...screenProps}/>}
           {tab==='growth'   && <GrowthScreen {...screenProps}/>}
           {tab==='journal'  && <JournalScreen {...screenProps}/>}
           {tab==='rewards'    && <RewardsScreen {...screenProps}/>}
@@ -8124,19 +8578,6 @@ export default function App() {
       )}
 
       {/* Boss Fight */}
-      {showBoss && (
-        <BossFightOverlay
-          boss={showBoss}
-          onDefeat={() => {
-            addXP(showBoss.xpReward, 'boss');
-            dispatch({ type:'DEFEAT_BOSS', payload: showBoss.rankTarget });
-            showNotif(`💥 BOSS DEFEATED · +${showBoss.xpReward.toLocaleString()} XP`);
-            setShowBoss(null);
-          }}
-          onFlee={() => setShowBoss(null)}
-        />
-      )}
-
       {/* System Voice */}
       {showSystemVoice && (
         <SystemVoiceOverlay
