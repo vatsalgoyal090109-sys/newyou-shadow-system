@@ -3,7 +3,8 @@ import {
   Sword, BookOpen, Brain, Flame, ScrollText,
   Home, CheckSquare, User, Star, Trophy, Plus, X, ChevronUp, ChevronDown,
   Play, Pause, RotateCcw, Target, Shield, Eye, EyeOff, ArrowLeft,
-  TrendingUp, Calendar, Edit3, Trash2, Check, AlertTriangle, Crown, Activity
+  TrendingUp, Calendar, Edit3, Trash2, Check, AlertTriangle, Crown, Activity,
+  Zap, BarChart2, Map, Crosshair, Users, MessageSquare, Award, Lock, Unlock, RefreshCw, GitBranch, Swords
 } from "lucide-react";
 
 // ─── STYLES ─────────────────────────────────────────────────────────────────
@@ -347,13 +348,93 @@ const STAT_COLORS = {
   vitality:'#2ECC71', focus:'#F39C12', charisma:'#FF69B4'
 };
 const STAT_LABELS = { strength:'STR', intelligence:'INT', discipline:'DIS', vitality:'VIT', focus:'FOC', charisma:'CHA' };
+
+// ─── AFFIRMATIONS ─────────────────────────────────────────────────────────────
+const AFFIRMATIONS = {
+  E: [
+    "The weakest you will ever be is today. Rise — one step at a time.",
+    "Every champion was once a beginner who refused to quit.",
+    "Discipline is choosing between what you want now and what you want most.",
+    "You didn't come this far to only come this far.",
+    "The pain of discipline weighs ounces. The pain of regret weighs tons.",
+  ],
+  D: [
+    "You have awakened. The path is hard — but you've already begun.",
+    "Average is the enemy. You refused it. Keep going.",
+    "Your habits today are the character you'll wear tomorrow.",
+    "Small daily improvements lead to staggering long-term results.",
+    "You are not behind. You are exactly where your effort has placed you.",
+  ],
+  C: [
+    "Complacency kills potential. You know this. Act on it.",
+    "Comfort zones are beautiful places, but nothing grows there.",
+    "The gap between who you are and who you want to be is called action.",
+    "You're not tired. You're uninspired. Find your reason.",
+    "If it doesn't challenge you, it doesn't change you.",
+  ],
+  B: [
+    "You've outworked most. Now outwork yourself.",
+    "The elite don't rise to the occasion — they train for it.",
+    "Iron sharpens iron. Your standards are rising. Hold them.",
+    "A setback is a setup for a comeback. Keep the standard.",
+    "Most people stop at 80%. You are not most people.",
+  ],
+  A: [
+    "You stand in the top 5%. Now reach for the top 1%.",
+    "Legends aren't born on easy days. They're forged on hard ones.",
+    "Your only competition is who you were yesterday.",
+    "The system chose you. Now justify that choice.",
+    "You are becoming dangerous. Don't stop now.",
+  ],
+  S: [
+    "You have transcended what most think is possible. Go further.",
+    "At this level, the only enemy is complacency. Destroy it.",
+    "Legendary is not a destination. It's a daily decision.",
+    "The shadow of who you could be is still ahead. Chase it.",
+    "History is written by those who refused to quit at S-rank.",
+  ],
+  MONARCH: [
+    "You stand above all. The System kneels — but you never do.",
+    "A Monarch does not rest. A Monarch builds an empire.",
+    "True power is not domination of others — it's mastery of self.",
+    "The highest peak reveals the next mountain. Keep climbing.",
+    "You have become the system. Now transcend even that.",
+  ],
+};
+
+// ─── BOSS FIGHTS ─────────────────────────────────────────────────────────────
+const BOSS_DATA = {
+  D: { name:'The Mediocrity Demon', emoji:'👺', desc:'"You\'ve done enough today. Rest." — It lies.', challenge:'Complete 3 quests in a single day.', xpReward:800, rankTarget:'D' },
+  C: { name:'The Comfort Cage', emoji:'🕷️', desc:'It thrives in your routines. It fears your growth.', challenge:'Maintain 3 habits for 3 days straight.', xpReward:1500, rankTarget:'C' },
+  B: { name:'The Shadow of Doubt', emoji:'🌑', desc:'It knows every weakness you have not yet conquered.', challenge:'Complete your Big Three quests this week.', xpReward:3000, rankTarget:'B' },
+  A: { name:'Apex Predator', emoji:'🐉', desc:'Born from 99% of humanity\'s abandoned potential.', challenge:'Zero failures for 5 consecutive days.', xpReward:6000, rankTarget:'A' },
+  S: { name:'The Void King', emoji:'☠️', desc:'The last guardian before Monarch. The hardest test.', challenge:'Complete every quest and habit for 7 days.', xpReward:12000, rankTarget:'S' },
+};
+
+// ─── SYSTEM VOICE MESSAGES (inactivity) ───────────────────────────────────────
+const SYSTEM_VOICE = [
+  { hours:12, msg:"Hunter. The gates are open. Your quests wait.", sub:"Every hour you delay is XP you'll never recover." },
+  { hours:24, msg:"24 hours of silence. The System is watching.", sub:"Your rank is in danger. Your potential is wasting." },
+  { hours:36, msg:"You are fading. This is how mediocrity wins.", sub:"One quest. Just one. Reclaim your discipline now." },
+  { hours:48, msg:"48 hours. The Shadow Clone has overtaken you.", sub:"Your past self is ahead. That should terrify you." },
+];
+
+// ─── CONSISTENCY SCORE HELPERS ────────────────────────────────────────────────
+function getWeekDates() {
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  return dates;
+}
 const DEFAULT_CUSTOM_STATS = [
-  { key:'strength',     label:'Strength',     abbr:'STR', color:'#E74C3C', icon:'⚔️' },
-  { key:'intelligence', label:'Intelligence', abbr:'INT', color:'#4FC3F7', icon:'📚' },
-  { key:'discipline',   label:'Discipline',   abbr:'DIS', color:'#9B59B6', icon:'🎯' },
-  { key:'vitality',     label:'Vitality',     abbr:'VIT', color:'#2ECC71', icon:'❤️' },
-  { key:'focus',        label:'Focus',        abbr:'FOC', color:'#F39C12', icon:'⚡' },
-  { key:'charisma',     label:'Charisma',     abbr:'CHA', color:'#FF69B4', icon:'🌟' },
+  { key:'strength',     label:'Strength',     abbr:'STR', color:'#E74C3C', icon:'⚔️', desc:'Raw physical power, combat ability and body strength.', boosts:'Workouts, Health quests, Physical habits' },
+  { key:'intelligence', label:'Intelligence', abbr:'INT', color:'#4FC3F7', icon:'📚', desc:'Mental acuity, learning speed and problem solving.', boosts:'Study sessions, Mind quests, Reading habits' },
+  { key:'discipline',   label:'Discipline',   abbr:'DIS', color:'#9B59B6', icon:'🎯', desc:'Willpower, self-control and consistency over time.', boosts:'Habits, Anti-todo, Daily quest streaks' },
+  { key:'vitality',     label:'Vitality',     abbr:'VIT', color:'#2ECC71', icon:'❤️', desc:'Life force, endurance and overall body health.', boosts:'Health habits, Sleep, Daily quests' },
+  { key:'focus',        label:'Focus',        abbr:'FOC', color:'#F39C12', icon:'⚡', desc:'Concentration, precision and depth of attention.', boosts:'Journal entries, Mind exercises, Study' },
+  { key:'charisma',     label:'Charisma',     abbr:'CHA', color:'#FF69B4', icon:'🌟', desc:'Social presence, influence and personal aura.', boosts:'Journal entries, Social quests, Reflection' },
 ];
 function getStatDefs(state) {
   return (state.customStats && state.customStats.length > 0) ? state.customStats : DEFAULT_CUSTOM_STATS;
@@ -589,19 +670,8 @@ const buildInitialState = () => ({
   subjects:{}, skills:{},
   habits:[],
   quests:{
-    daily:[
-      {id:'d1',name:'Complete morning routine',xp:50,completed:false,date:'',category:'routine',streak:0,lastCompletedDate:''},
-      {id:'d2',name:'Study for 1 hour',xp:75,completed:false,date:'',category:'mind',streak:0,lastCompletedDate:''},
-      {id:'d3',name:'Complete workout',xp:100,completed:false,date:'',category:'body',streak:0,lastCompletedDate:''},
-      {id:'d4',name:'No social media before noon',xp:40,completed:false,date:'',category:'digital',streak:0,lastCompletedDate:''},
-      {id:'d5',name:'Write in journal',xp:30,completed:false,date:'',category:'mind',streak:0,lastCompletedDate:''},
-      {id:'d6',name:'Sleep before midnight',xp:60,completed:false,date:'',category:'lifestyle',streak:0,lastCompletedDate:''},
-    ],
-    weekly:[
-      {id:'w1',name:'Complete 5 workouts this week',xp:500,progress:0,target:5,completed:false,streak:0,lastCompletedWeek:''},
-      {id:'w2',name:'Study 10 hours this week',xp:400,progress:0,target:10,completed:false,streak:0,lastCompletedWeek:''},
-      {id:'w3',name:'Maintain all habits for 7 days',xp:300,progress:0,target:7,completed:false,streak:0,lastCompletedWeek:''},
-    ],
+    daily:[],
+    weekly:[],
     main:[], side:[]
   },
   workouts:[], studySessions:[], journal:[],
@@ -615,7 +685,18 @@ const buildInitialState = () => ({
   notifications: { enabled: false, time: '08:00', permission: 'default' },
   onboarded: false,
   assessmentAnswers: {},
-  bgMusic: { type: null, ytVideoId: '', fileName: '', volume: 0.7, playing: false }
+  bgMusic: { type: null, ytVideoId: '', fileName: '', volume: 0.7, playing: false },
+  // ── New motivational features ──
+  xpLog: [],          // [{ date:'YYYY-MM-DD', xp:number }]
+  penaltyLog: [],     // [{ date, xp, reason }]
+  bigThree: [],       // quest IDs pinned as Big Three
+  identityStatement: '',
+  statSnapshot: null, // { date, stats } for before/after comparison
+  reflections: [],    // [{ id, questName, text, date }]
+  oath: { text:'', lockedAt:null, completed:false },
+  bossDefeated: [],   // array of rank names boss was defeated for
+  lastActivity: null, // timestamp of last user action
+  weeklyReviews: [],  // [{ weekId, highlights, lowlights, focusNext, letter }]
 });
 
 // ─── REDUCER ─────────────────────────────────────────────────────────────────
@@ -787,8 +868,85 @@ function reducer(state, action) {
       const { type, value } = action.payload;
       return { ...state, hunter: { ...state.hunter, [`equipped${type}`]: value } };
     }
+    case 'LOG_DAILY_XP': {
+      const today = todayStr();
+      const existing = (state.xpLog || []);
+      const todayEntry = existing.find(e => e.date === today);
+      const newLog = todayEntry
+        ? existing.map(e => e.date === today ? { ...e, xp: e.xp + action.payload } : e)
+        : [...existing.slice(-29), { date: today, xp: action.payload }];
+      return { ...state, xpLog: newLog, lastActivity: Date.now() };
+    }
+    case 'LOG_PENALTY': {
+      const entry = { date: todayStr(), xp: action.payload.xp, reason: action.payload.reason };
+      return { ...state, penaltyLog: [...(state.penaltyLog||[]).slice(-49), entry] };
+    }
+    case 'SET_BIG_THREE': {
+      return { ...state, bigThree: action.payload };
+    }
+    case 'SET_IDENTITY': {
+      return { ...state, identityStatement: action.payload, lastActivity: Date.now() };
+    }
+    case 'SAVE_SNAPSHOT': {
+      return { ...state, statSnapshot: { date: todayStr(), stats: { ...state.stats } } };
+    }
+    case 'ADD_REFLECTION': {
+      const r = { id: 'ref_'+Date.now(), ...action.payload, date: Date.now() };
+      return { ...state, reflections: [...(state.reflections||[]).slice(-49), r] };
+    }
+    case 'SET_OATH': {
+      return { ...state, oath: { text: action.payload, lockedAt: Date.now(), completed: false } };
+    }
+    case 'COMPLETE_OATH': {
+      return { ...state, oath: { ...state.oath, completed: true } };
+    }
+    case 'CLEAR_OATH': {
+      return { ...state, oath: { text:'', lockedAt:null, completed:false } };
+    }
+    case 'DEFEAT_BOSS': {
+      return { ...state, bossDefeated: [...(state.bossDefeated||[]), action.payload], lastActivity: Date.now() };
+    }
+    case 'UPDATE_ACTIVITY': {
+      return { ...state, lastActivity: Date.now() };
+    }
+    case 'SAVE_WEEKLY_REVIEW': {
+      const weekId = getWeekId();
+      const existing = (state.weeklyReviews||[]).filter(w => w.weekId !== weekId);
+      return { ...state, weeklyReviews: [...existing, { weekId, ...action.payload, savedAt: Date.now() }] };
+    }
     case 'RESET_ALL': {
       return { ...buildInitialState() };
+    }
+    case 'DEMOTE_RANK': {
+      const rankOrder = ['E','D','C','B','A','S','MONARCH'];
+      const curIdx = rankOrder.indexOf(state.hunter.rank);
+      const newIdx = Math.max(0, curIdx - 2);
+      const newRank = rankOrder[newIdx];
+      const newMaxHp = RANK_MAX_HP[newRank] || 100;
+      const newLevel = RANK_LEVELS[newRank] || 1;
+      const newXP = Math.floor((state.hunter.totalXP || 0) * 0.5);
+      const newXpToNext = xpForLevel(newLevel);
+      // Keep only custom quests, clear default ones
+      const daily = (state.quests.daily || []).filter(q => q.id.startsWith('custom_') || q.id.startsWith('side_'));
+      const weekly = (state.quests.weekly || []).filter(q => q.id.startsWith('weekly_'));
+      return {
+        ...state,
+        hunter: {
+          ...state.hunter,
+          rank: newRank,
+          maxHp: newMaxHp,
+          hp: Math.floor(newMaxHp * 0.2),
+          level: newLevel,
+          totalXP: newXP,
+          xpToNextLevel: newXpToNext,
+          title: getTitle(newLevel),
+          coins: Math.floor((state.hunter.coins || 0) * 0.5),
+        },
+        quests: { ...state.quests, daily, weekly },
+        stats: Object.fromEntries(
+          Object.entries(state.stats).map(([k,v]) => [k, Math.max(1, Math.floor(v * 0.7))])
+        ),
+      };
     }
     case 'SET_THEME': {
       return { ...state, theme: action.payload };
@@ -1266,15 +1424,139 @@ function RankBadge({ rank, size=14, pulse=false }) {
 }
 
 // ─── STAT BAR ────────────────────────────────────────────────────────────────
-function StatBar({ label, abbr, value, color }) {
-  const pct = Math.min(100, (value/100)*100);
+const STAT_TIER_INFO = {
+  strength:     { desc:'Physical power & combat ability', boosts:['Workouts','Health quests'], tiers:['Frail','Weak','Average','Strong','Mighty','Titan','Godlike'] },
+  intelligence: { desc:'Mental acuity & learning speed',  boosts:['Study sessions','Mind quests'], tiers:['Dull','Slow','Average','Smart','Brilliant','Genius','Omniscient'] },
+  discipline:   { desc:'Willpower & consistency',         boosts:['Habits','Anti-todo'], tiers:['Reckless','Lazy','Mediocre','Focused','Driven','Iron Will','Supreme'] },
+  vitality:     { desc:'Life force & endurance',          boosts:['Health habits','Daily quests'], tiers:['Dying','Fragile','Normal','Healthy','Vigorous','Immortal','Divine'] },
+  focus:        { desc:'Concentration & precision',       boosts:['Journal','Mind exercises'], tiers:['Scattered','Unfocused','Neutral','Sharp','Laser','Zenith','Absolute'] },
+  charisma:     { desc:'Presence, influence & aura',      boosts:['Journal entries','Social quests'], tiers:['Invisible','Plain','Average','Charismatic','Magnetic','Legend','Monarch'] },
+};
+function getStatTier(value) {
+  if (value < 5)  return 0;
+  if (value < 15) return 1;
+  if (value < 30) return 2;
+  if (value < 50) return 3;
+  if (value < 75) return 4;
+  if (value < 100) return 5;
+  return 6;
+}
+function StatBar({ label, abbr, value, color, icon, desc: descProp, boosts: boostsProp }) {
+  const [hovered, setHovered] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const pct = Math.min(100, (value / 100) * 100);
+  // Use prop desc/boosts first, then fall back to built-in STAT_TIER_INFO
+  const builtIn = STAT_TIER_INFO[label?.toLowerCase()] || null;
+  const info = builtIn
+    ? builtIn
+    : (descProp ? {
+        desc: descProp,
+        boosts: boostsProp ? boostsProp.split(',').map(s => s.trim()) : ['Complete quests'],
+        tiers: ['Novice','Apprentice','Adept','Expert','Master','Elite','Legendary']
+      } : null);
+  const tierIdx = getStatTier(value);
+  const tierName = info ? info.tiers[Math.min(tierIdx, info.tiers.length - 1)] : '';
+  const segments = [25, 50, 75, 100];
+
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-      <span style={{ width:30, fontSize:11, color, fontWeight:700, fontFamily:'Cinzel,serif' }}>{abbr}</span>
-      <div className="xp-bar-track" style={{ flex:1 }}>
-        <div className="xp-bar-fill" style={{ width:`${pct}%`, background:`linear-gradient(90deg, ${color}88, ${color})` }}/>
+    <div style={{ marginBottom: 8 }}>
+      <div
+        style={{
+          display:'flex', alignItems:'center', gap:8, cursor:'pointer',
+          padding:'6px 8px', borderRadius:8, transition:'all 0.2s',
+          background: hovered ? `${color}0d` : 'transparent',
+          border: expanded ? `1px solid ${color}44` : '1px solid transparent',
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={() => setExpanded(e => !e)}
+      >
+        {/* Icon + Abbr */}
+        <div style={{ display:'flex', alignItems:'center', gap:4, width:46, flexShrink:0 }}>
+          {icon && <span style={{ fontSize:11 }}>{icon}</span>}
+          <span style={{ fontSize:10, color, fontWeight:700, fontFamily:'Cinzel,serif', letterSpacing:1 }}>{abbr}</span>
+        </div>
+
+        {/* Bar with segments */}
+        <div style={{ flex:1, position:'relative' }}>
+          <div style={{
+            height:8, background:'rgba(255,255,255,0.05)', borderRadius:4, overflow:'hidden',
+            border:`1px solid ${color}22`,
+            boxShadow: hovered ? `0 0 8px ${color}33` : 'none',
+            transition:'box-shadow 0.2s',
+          }}>
+            <div style={{
+              height:'100%', width:`${pct}%`,
+              background:`linear-gradient(90deg, ${color}66, ${color}, ${color}dd)`,
+              borderRadius:4, transition:'width 0.8s ease',
+              boxShadow:`0 0 6px ${color}88`,
+              position:'relative', overflow:'hidden',
+            }}>
+              {/* Shimmer */}
+              <div style={{
+                position:'absolute', inset:0,
+                background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)',
+                backgroundSize:'200% 100%',
+                animation: pct > 0 ? 'shimmer 2.5s ease-in-out infinite' : 'none',
+              }}/>
+            </div>
+            {/* Segment ticks */}
+            {segments.map(s => (
+              <div key={s} style={{
+                position:'absolute', top:0, bottom:0, left:`${s}%`,
+                width:1, background:'rgba(255,255,255,0.1)', pointerEvents:'none',
+              }}/>
+            ))}
+          </div>
+        </div>
+
+        {/* Value + Tier */}
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', width:50, flexShrink:0 }}>
+          <span style={{ fontSize:12, color, fontFamily:'Cinzel,serif', fontWeight:700, lineHeight:1 }}>{value}</span>
+          {tierName && <span style={{ fontSize:8, color:`${color}88`, letterSpacing:0.5, marginTop:1 }}>{tierName.toUpperCase()}</span>}
+        </div>
+
+        {/* Expand arrow */}
+        <span style={{ fontSize:9, color:`${color}66`, transition:'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}>▼</span>
       </div>
-      <span style={{ width:24, fontSize:11, color, textAlign:'right' }}>{value}</span>
+
+      {/* Expanded detail panel */}
+      {expanded && info && (
+        <div style={{
+          margin:'0 8px 4px',
+          padding:'10px 12px', borderRadius:8,
+          background:`${color}08`,
+          border:`1px solid ${color}33`,
+          animation:'slideIn 0.2s ease-out forwards',
+        }}>
+          <div style={{ fontSize:11, color:'var(--text)', marginBottom:6, lineHeight:1.5 }}>
+            {info.desc}
+          </div>
+          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+            {/* Progress to next tier */}
+            {tierIdx < 6 && (() => {
+              const tierThresholds = [5,15,30,50,75,100];
+              const from = tierThresholds[tierIdx - 1] || 0;
+              const to = tierThresholds[tierIdx] || 100;
+              const progress = Math.min(100, ((value - from) / (to - from)) * 100);
+              return (
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:9, color:`${color}88`, marginBottom:3, letterSpacing:1 }}>
+                    NEXT TIER: {info.tiers[Math.min(tierIdx + 1, 6)].toUpperCase()}
+                  </div>
+                  <div style={{ height:4, background:`${color}15`, borderRadius:2, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${progress}%`, background:color, borderRadius:2, transition:'width 0.6s' }}/>
+                  </div>
+                  <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>{value} / {to}</div>
+                </div>
+              );
+            })()}
+          </div>
+          <div style={{ fontSize:9, color:`${color}99`, letterSpacing:1 }}>
+            📈 BOOSTED BY: {info.boosts.join(' · ')}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1811,7 +2093,979 @@ function BoostPanel({ hunter }) {
   );
 }
 
-function StatusScreen({ state, dispatch, addXP }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// XP VELOCITY SPARKLINE
+// ─────────────────────────────────────────────────────────────────────────────
+function XpVelocityChart({ xpLog }) {
+  const days = getWeekDates();
+  const data = days.map(d => {
+    const e = (xpLog||[]).find(x => x.date === d);
+    return { date: d, xp: e ? e.xp : 0 };
+  });
+  const max = Math.max(...data.map(d => d.xp), 1);
+  const W = 280, H = 60;
+  const pts = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * (W - 20) + 10;
+    const y = H - 10 - ((d.xp / max) * (H - 20));
+    return { x, y, xp: d.xp, date: d.date };
+  });
+  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const fillD = `M ${pts[0].x} ${H} ${pts.map(p => `L ${p.x} ${p.y}`).join(' ')} L ${pts[pts.length-1].x} ${H} Z`;
+  const totalXP = data.reduce((s, d) => s + d.xp, 0);
+  const trend = data[6].xp >= data[0].xp ? 'up' : 'down';
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
+        <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3 }}>7-DAY XP VELOCITY</div>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ fontSize:10, color: trend==='up' ? '#2ECC71' : 'var(--crimson)' }}>
+            {trend==='up' ? '↑' : '↓'} TREND
+          </span>
+          <span className="cinzel" style={{ fontSize:12, color:'var(--gold)' }}>{totalXP.toLocaleString()} XP</span>
+        </div>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow:'visible' }}>
+        <defs>
+          <linearGradient id="xpGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4FC3F7" stopOpacity="0.4"/>
+            <stop offset="100%" stopColor="#4FC3F7" stopOpacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <path d={fillD} fill="url(#xpGrad)"/>
+        <path d={pathD} fill="none" stroke="#4FC3F7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter:'drop-shadow(0 0 4px #4FC3F7aa)' }}/>
+        {pts.map((p, i) => p.xp > 0 && (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="#4FC3F7" stroke="#050508" strokeWidth="1.5"
+            style={{ filter:'drop-shadow(0 0 3px #4FC3F7)' }}/>
+        ))}
+        {/* Day labels */}
+        {pts.map((p, i) => (
+          <text key={i} x={p.x} y={H} textAnchor="middle" style={{ fontSize:7, fill:'#6a7a9a', fontFamily:'Courier New' }}>
+            {['S','M','T','W','T','F','S'][new Date(data[i].date + 'T12:00:00').getDay()]}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSISTENCY SCORE
+// ─────────────────────────────────────────────────────────────────────────────
+function ConsistencyScore({ state }) {
+  const xpLog = state.xpLog || [];
+  const days = getWeekDates();
+  const activeDays = days.filter(d => (xpLog.find(e => e.date === d)?.xp || 0) > 0).length;
+  const score = Math.round((activeDays / 7) * 100);
+  const habits = state.habits || [];
+  const today = todayStr();
+  const habitsDoneToday = habits.filter(h => h.completedDates?.includes(today)).length;
+  const habitsTotal = habits.length;
+  const questsDoneToday = (state.quests.daily||[]).filter(q => q.completed && q.date === today).length;
+  const questsTotal = (state.quests.daily||[]).length;
+
+  const scoreColor = score >= 80 ? '#2ECC71' : score >= 50 ? '#F39C12' : '#E74C3C';
+  const scoreLabel = score >= 80 ? 'EXCELLENT' : score >= 60 ? 'GOOD' : score >= 40 ? 'AVERAGE' : 'POOR';
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ position:'relative', width:64, height:64, flexShrink:0 }}>
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6"/>
+            <circle cx="32" cy="32" r="26" fill="none" stroke={scoreColor} strokeWidth="6"
+              strokeDasharray={`${2*Math.PI*26}`}
+              strokeDashoffset={`${2*Math.PI*26 * (1 - score/100)}`}
+              strokeLinecap="round"
+              transform="rotate(-90 32 32)"
+              style={{ filter:`drop-shadow(0 0 4px ${scoreColor})`, transition:'stroke-dashoffset 1s ease' }}/>
+          </svg>
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+            <span className="cinzel" style={{ fontSize:14, fontWeight:900, color:scoreColor, lineHeight:1 }}>{score}</span>
+            <span style={{ fontSize:7, color:'var(--text-dim)' }}>%</span>
+          </div>
+        </div>
+        <div style={{ flex:1 }}>
+          <div className="cinzel" style={{ fontSize:12, color:scoreColor, marginBottom:4 }}>{scoreLabel}</div>
+          <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:6 }}>Active {activeDays}/7 days this week</div>
+          <div style={{ display:'flex', gap:3 }}>
+            {days.map((d, i) => {
+              const hasXP = (xpLog.find(e => e.date === d)?.xp || 0) > 0;
+              return (
+                <div key={i} style={{
+                  width:16, height:16, borderRadius:3,
+                  background: hasXP ? scoreColor : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${hasXP ? scoreColor+'88' : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: hasXP ? `0 0 4px ${scoreColor}66` : 'none',
+                  transition:'all 0.3s',
+                }}/>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+        <div style={{ padding:'8px 10px', background:'rgba(79,195,247,0.05)', borderRadius:6, border:'1px solid rgba(79,195,247,0.15)' }}>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, marginBottom:3 }}>TODAY'S QUESTS</div>
+          <div className="cinzel" style={{ fontSize:16, color:'var(--mana)' }}>{questsDoneToday}<span style={{ fontSize:10, color:'var(--text-dim)' }}>/{questsTotal}</span></div>
+        </div>
+        <div style={{ padding:'8px 10px', background:'rgba(243,156,18,0.05)', borderRadius:6, border:'1px solid rgba(243,156,18,0.15)' }}>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, marginBottom:3 }}>TODAY'S HABITS</div>
+          <div className="cinzel" style={{ fontSize:16, color:'var(--gold)' }}>{habitsDoneToday}<span style={{ fontSize:10, color:'var(--text-dim)' }}>/{habitsTotal}</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PENALTY VISIBILITY
+// ─────────────────────────────────────────────────────────────────────────────
+function PenaltyVisibilityPanel({ state }) {
+  const penaltyLog = state.penaltyLog || [];
+  const totalPenaltyXP = penaltyLog.reduce((s, p) => s + (p.xp||0), 0);
+  const thisWeek = getWeekDates();
+  const weekPenalty = penaltyLog.filter(p => thisWeek.includes(p.date)).reduce((s,p) => s+(p.xp||0), 0);
+  const recent = [...penaltyLog].slice(-3).reverse();
+  if (penaltyLog.length === 0) return (
+    <div style={{ textAlign:'center', padding:'12px 0', fontSize:11, color:'#2ECC71' }}>
+      ✅ No penalties recorded. Excellent discipline.
+    </div>
+  );
+  return (
+    <div>
+      <div style={{ display:'flex', gap:8, marginBottom:10 }}>
+        <div style={{ flex:1, padding:'8px 10px', background:'rgba(231,76,60,0.06)', border:'1px solid rgba(231,76,60,0.2)', borderRadius:6, textAlign:'center' }}>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, marginBottom:3 }}>ALL-TIME LOST</div>
+          <div className="cinzel" style={{ fontSize:16, color:'var(--crimson)' }}>−{totalPenaltyXP.toLocaleString()}</div>
+          <div style={{ fontSize:9, color:'rgba(231,76,60,0.5)' }}>XP</div>
+        </div>
+        <div style={{ flex:1, padding:'8px 10px', background:'rgba(231,76,60,0.04)', border:'1px solid rgba(231,76,60,0.15)', borderRadius:6, textAlign:'center' }}>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, marginBottom:3 }}>THIS WEEK</div>
+          <div className="cinzel" style={{ fontSize:16, color: weekPenalty > 0 ? 'var(--crimson)' : '#2ECC71' }}>
+            {weekPenalty > 0 ? `−${weekPenalty.toLocaleString()}` : '0'}
+          </div>
+          <div style={{ fontSize:9, color:'rgba(231,76,60,0.5)' }}>XP</div>
+        </div>
+      </div>
+      {recent.length > 0 && (
+        <div>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:2, marginBottom:6 }}>RECENT FAILURES</div>
+          {recent.map((p,i) => (
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:10 }}>
+              <span style={{ color:'var(--text-dim)', flex:1 }} >{p.reason||'Penalty'}</span>
+              <span style={{ color:'var(--crimson)', marginLeft:8, flexShrink:0 }}>−{p.xp} XP</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BIG THREE PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function BigThreePanel({ state, dispatch, setParentTab }) {
+  const [editing, setEditing] = useState(false);
+  const bigThree = state.bigThree || [];
+  const allQuests = [
+    ...(state.quests.daily||[]).map(q => ({ ...q, type:'daily' })),
+    ...(state.quests.weekly||[]).map(q => ({ ...q, type:'weekly' })),
+    ...(state.quests.main||[]).map(q => ({ ...q, type:'main' })),
+    ...(state.quests.side||[]).map(q => ({ ...q, type:'side' })),
+  ].filter(q => !q.completed && !q.failed);
+  const [selected, setSelected] = useState(bigThree);
+
+  const pinnedQuests = allQuests.filter(q => bigThree.includes(q.id));
+  const today = todayStr();
+
+  if (allQuests.length === 0) return (
+    <div style={{ textAlign:'center', padding:'14px 0', fontSize:11, color:'var(--text-dim)' }}>
+      No active quests. Add quests to the Mission Board first.
+    </div>
+  );
+
+  return (
+    <div>
+      {!editing ? (
+        <>
+          {pinnedQuests.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'14px 0' }}>
+              <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10, lineHeight:1.6 }}>
+                No Big Three set. Pin your 3 most important quests to appear here daily.
+              </div>
+              <button onClick={() => { setSelected([...bigThree]); setEditing(true); }} className="btn-gold" style={{ fontSize:10, padding:'6px 14px' }}>
+                ⚡ SET BIG THREE
+              </button>
+            </div>
+          ) : (
+            <>
+              {pinnedQuests.map((q, i) => {
+                const done = q.completed || (q.type === 'daily' && q.date === today && q.completed);
+                return (
+                  <div key={q.id} style={{
+                    display:'flex', alignItems:'center', gap:10, marginBottom:8,
+                    padding:'10px 12px', borderRadius:8,
+                    background: done ? 'rgba(46,204,113,0.05)' : 'rgba(243,156,18,0.05)',
+                    border: `1px solid ${done ? 'rgba(46,204,113,0.3)' : 'rgba(243,156,18,0.3)'}`,
+                  }}>
+                    <div style={{
+                      width:22, height:22, borderRadius:'50%', flexShrink:0,
+                      background: done ? '#2ECC71' : 'rgba(243,156,18,0.2)',
+                      border: `2px solid ${done ? '#2ECC71' : 'var(--gold)'}`,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:11, fontFamily:'Cinzel,serif', fontWeight:900,
+                      color: done ? '#000' : 'var(--gold)',
+                    }}>
+                      {done ? '✓' : i+1}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:12, color: done ? 'var(--text-dim)' : 'var(--text)', textDecoration: done ? 'line-through' : 'none' }}>
+                        {q.name}
+                      </div>
+                      <div style={{ fontSize:10, color:'var(--gold)' }}>{q.xp} XP · {q.type}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <button onClick={() => { setSelected([...bigThree]); setEditing(true); }} style={{
+                width:'100%', padding:'6px', borderRadius:6, cursor:'pointer', marginTop:4,
+                background:'none', border:'1px solid rgba(255,255,255,0.08)', color:'var(--text-dim)', fontSize:10,
+              }}>✏ Edit Big Three</button>
+            </>
+          )}
+        </>
+      ) : (
+        <div>
+          <div style={{ fontSize:10, color:'var(--gold)', letterSpacing:2, marginBottom:8 }}>SELECT UP TO 3 QUESTS</div>
+          <div style={{ maxHeight:180, overflowY:'auto' }}>
+            {allQuests.slice(0, 20).map(q => {
+              const isSel = selected.includes(q.id);
+              return (
+                <div key={q.id} onClick={() => {
+                  setSelected(prev => isSel ? prev.filter(id => id !== q.id) : prev.length < 3 ? [...prev, q.id] : prev);
+                }} style={{
+                  display:'flex', alignItems:'center', gap:8, padding:'8px 10px', marginBottom:4,
+                  borderRadius:6, cursor:'pointer',
+                  background: isSel ? 'rgba(243,156,18,0.12)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isSel ? 'rgba(243,156,18,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                }}>
+                  <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${isSel ? 'var(--gold)' : 'var(--text-dim)'}`, background: isSel ? 'var(--gold)' : 'none', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {isSel && <span style={{ fontSize:9, color:'#000' }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize:11, color: isSel ? 'var(--gold)' : 'var(--text)', flex:1 }}>{q.name}</span>
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{q.type}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display:'flex', gap:8, marginTop:10 }}>
+            <button className="btn-gold" style={{ flex:1, fontSize:10, padding:'8px' }} onClick={() => {
+              dispatch({ type:'SET_BIG_THREE', payload: selected });
+              setEditing(false);
+            }}>SAVE ({selected.length}/3)</button>
+            <button className="btn-danger" style={{ fontSize:10, padding:'8px' }} onClick={() => setEditing(false)}>CANCEL</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDENTITY STATEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+function IdentityPanel({ state, dispatch }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(state.identityStatement || '');
+  const identity = state.identityStatement;
+  const rankColor = RANK_COLORS[state.hunter.rank] || 'var(--mana)';
+
+  return (
+    <div>
+      {!editing ? (
+        identity ? (
+          <div>
+            <div style={{
+              padding:'14px 16px', borderRadius:8, textAlign:'center',
+              background:`${rankColor}08`, border:`1px solid ${rankColor}33`,
+              boxShadow:`0 0 16px ${rankColor}11`,
+            }}>
+              <div style={{ fontSize:9, color:`${rankColor}88`, letterSpacing:3, marginBottom:8 }}>I AM</div>
+              <div className="cinzel" style={{ fontSize:14, color:rankColor, lineHeight:1.7, fontStyle:'italic' }}>
+                {identity}
+              </div>
+            </div>
+            <button onClick={() => { setDraft(identity); setEditing(true); }} style={{
+              width:'100%', padding:'5px', marginTop:6, borderRadius:5, cursor:'pointer',
+              background:'none', border:'1px solid rgba(255,255,255,0.06)', color:'var(--text-dim)', fontSize:10,
+            }}>✏ Edit Identity</button>
+          </div>
+        ) : (
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10, lineHeight:1.6 }}>
+              Define who you're becoming. This will appear every time you open the app.
+            </div>
+            <button onClick={() => setEditing(true)} className="btn-mana" style={{ fontSize:10, padding:'7px 16px' }}>
+              ✦ SET YOUR IDENTITY
+            </button>
+          </div>
+        )
+      ) : (
+        <div>
+          <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:6 }}>e.g. "someone who trains every day and never makes excuses"</div>
+          <textarea className="input-dark scrollable" value={draft} onChange={e => setDraft(e.target.value)}
+            placeholder="someone who conquers every obstacle..."
+            style={{ minHeight:72, fontSize:13, lineHeight:1.7, marginBottom:10, resize:'none' }}/>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn-mana" style={{ flex:1, fontSize:10, padding:'8px' }} onClick={() => {
+              dispatch({ type:'SET_IDENTITY', payload: draft.trim() });
+              setEditing(false);
+            }}>LOCK IN IDENTITY</button>
+            <button className="btn-danger" style={{ fontSize:10, padding:'8px' }} onClick={() => setEditing(false)}>CANCEL</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MILESTONE ROADMAP
+// ─────────────────────────────────────────────────────────────────────────────
+function MilestoneRoadmap({ state }) {
+  const { hunter, xpLog } = state;
+  const currentRank = hunter.rank;
+  const currentIdx = RANKS.indexOf(currentRank);
+  const avgDailyXP = (() => {
+    const log = xpLog || [];
+    if (log.length === 0) return 500;
+    const recent = log.slice(-7);
+    return Math.max(1, Math.round(recent.reduce((s,e) => s+e.xp,0) / recent.length));
+  })();
+
+  const rankMilestones = RANKS.map((r, i) => {
+    const levelNeeded = RANK_LEVELS[r];
+    let xpNeeded = 0;
+    for (let l = 1; l < levelNeeded; l++) xpNeeded += Math.round(1000 * Math.pow(l, 1.5));
+    const currentTotalXP = (() => {
+      let t = hunter.totalXP;
+      for (let l = 1; l < hunter.level; l++) t += Math.round(1000 * Math.pow(l, 1.5));
+      return t;
+    })();
+    const xpDiff = xpNeeded - currentTotalXP;
+    const daysEst = xpDiff > 0 ? Math.ceil(xpDiff / avgDailyXP) : 0;
+    return { rank: r, reached: i <= currentIdx, current: r === currentRank, daysEst, levelNeeded };
+  });
+
+  return (
+    <div style={{ overflowX:'auto', paddingBottom:4 }}>
+      <div style={{ display:'flex', alignItems:'center', minWidth:360, position:'relative', padding:'8px 0' }}>
+        {rankMilestones.map((m, i) => {
+          const color = RANK_COLORS[m.rank] || '#6a7a9a';
+          const isLast = i === rankMilestones.length - 1;
+          return (
+            <div key={m.rank} style={{ display:'flex', alignItems:'center', flex: isLast ? 0 : 1 }}>
+              {/* Node */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative' }}>
+                <div style={{
+                  width: m.current ? 36 : 28, height: m.current ? 36 : 28,
+                  borderRadius:'50%', flexShrink:0,
+                  background: m.reached ? color : 'rgba(255,255,255,0.04)',
+                  border: `2px solid ${m.reached ? color : 'rgba(255,255,255,0.12)'}`,
+                  boxShadow: m.current ? `0 0 16px ${color}88, 0 0 30px ${color}44` : m.reached ? `0 0 8px ${color}44` : 'none',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  transition:'all 0.3s',
+                  animation: m.current ? 'rankPulse 2.5s ease-in-out infinite' : 'none',
+                }}>
+                  <span className="cinzel" style={{ fontSize: m.current ? 11 : 9, color: m.reached ? (m.rank==='MONARCH'?'#000':'#fff') : 'rgba(255,255,255,0.3)', fontWeight:900 }}>
+                    {m.rank === 'MONARCH' ? '♛' : m.rank}
+                  </span>
+                </div>
+                <div style={{ marginTop:4, textAlign:'center' }}>
+                  {m.current && (
+                    <div style={{ fontSize:8, color:color, letterSpacing:1, fontFamily:'Cinzel,serif', whiteSpace:'nowrap' }}>YOU</div>
+                  )}
+                  {!m.reached && m.daysEst > 0 && (
+                    <div style={{ fontSize:7, color:'rgba(255,255,255,0.3)', whiteSpace:'nowrap' }}>~{m.daysEst}d</div>
+                  )}
+                </div>
+              </div>
+              {/* Connector line */}
+              {!isLast && (
+                <div style={{
+                  flex:1, height:2, mx:2,
+                  background: m.reached ? `linear-gradient(90deg, ${color}, ${RANK_COLORS[RANKS[i+1]]||'#6a7a9a'})` : 'rgba(255,255,255,0.06)',
+                  boxShadow: m.reached ? `0 0 4px ${color}44` : 'none',
+                  transition:'all 0.3s',
+                }}/>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize:9, color:'var(--text-dim)', textAlign:'center', marginTop:4 }}>
+        At your pace of <span style={{ color:'var(--mana)' }}>{avgDailyXP.toLocaleString()} XP/day</span>
+        {rankMilestones.find(m => !m.reached) && (
+          <span> · Next rank in ~<span style={{ color:'var(--gold)' }}>{rankMilestones.find(m => !m.reached)?.daysEst || '?'} days</span></span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHADOW CLONE
+// ─────────────────────────────────────────────────────────────────────────────
+function ShadowClonePanel({ state }) {
+  const xpLog = state.xpLog || [];
+  const days = getWeekDates();
+  const thisWeekXP = days.reduce((s, d) => s + (xpLog.find(e => e.date === d)?.xp || 0), 0);
+  const lastWeekDays = days.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    dt.setDate(dt.getDate() - 7);
+    return dt.toISOString().slice(0,10);
+  });
+  const lastWeekXP = lastWeekDays.reduce((s, d) => s + (xpLog.find(e => e.date === d)?.xp || 0), 0);
+  const diff = thisWeekXP - lastWeekXP;
+  const winning = diff >= 0;
+  const pctDiff = lastWeekXP > 0 ? Math.round(Math.abs(diff) / lastWeekXP * 100) : 0;
+
+  return (
+    <div>
+      <div style={{ display:'flex', gap:10, marginBottom:10 }}>
+        <div style={{ flex:1, padding:'10px', borderRadius:8, textAlign:'center', background:'rgba(79,195,247,0.06)', border:'1px solid rgba(79,195,247,0.2)' }}>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, marginBottom:4 }}>THIS WEEK</div>
+          <div className="cinzel" style={{ fontSize:18, color:'var(--mana)' }}>{thisWeekXP.toLocaleString()}</div>
+          <div style={{ fontSize:9, color:'var(--text-dim)' }}>XP</div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', flexDirection:'column', justifyContent:'center', padding:'0 4px' }}>
+          <div style={{ fontSize:18 }}>{winning ? '⚔️' : '👻'}</div>
+          <div style={{ fontSize:9, color: winning ? '#2ECC71' : 'var(--crimson)', letterSpacing:1, marginTop:2, fontFamily:'Cinzel,serif' }}>
+            {winning ? 'WIN' : 'LOSE'}
+          </div>
+        </div>
+        <div style={{ flex:1, padding:'10px', borderRadius:8, textAlign:'center', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', opacity:0.7 }}>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, marginBottom:4 }}>LAST WEEK</div>
+          <div className="cinzel" style={{ fontSize:18, color:'var(--text-dim)' }}>{lastWeekXP.toLocaleString()}</div>
+          <div style={{ fontSize:9, color:'var(--text-dim)' }}>XP</div>
+        </div>
+      </div>
+      <div style={{ textAlign:'center', padding:'6px', borderRadius:6, background: winning ? 'rgba(46,204,113,0.06)' : 'rgba(231,76,60,0.06)', border:`1px solid ${winning ? 'rgba(46,204,113,0.2)' : 'rgba(231,76,60,0.2)'}` }}>
+        <span className="cinzel" style={{ fontSize:12, color: winning ? '#2ECC71' : 'var(--crimson)' }}>
+          {winning ? `+${diff.toLocaleString()} XP` : `−${Math.abs(diff).toLocaleString()} XP`}
+        </span>
+        <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:8 }}>
+          {pctDiff > 0 ? `${pctDiff}% ${winning ? 'ahead' : 'behind'} your shadow` : 'even with your shadow'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OATH PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function OathPanel({ state, dispatch }) {
+  const [draft, setDraft] = useState('');
+  const oath = state.oath || {};
+  const isLocked = oath.lockedAt && !oath.completed;
+
+  if (isLocked) {
+    const days = Math.floor((Date.now() - oath.lockedAt) / 86400000);
+    return (
+      <div style={{ padding:'14px', borderRadius:8, background:'rgba(155,89,182,0.06)', border:'2px solid rgba(155,89,182,0.4)', textAlign:'center' }}>
+        <div style={{ fontSize:18, marginBottom:6 }}>🔒</div>
+        <div style={{ fontSize:9, color:'var(--violet)', letterSpacing:3, marginBottom:8 }}>ACTIVE OATH</div>
+        <div className="cinzel" style={{ fontSize:13, color:'var(--text)', lineHeight:1.7, fontStyle:'italic', marginBottom:8 }}>
+          "{oath.text}"
+        </div>
+        <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:12 }}>Sworn {days} day{days !== 1 ? 's' : ''} ago</div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={() => dispatch({ type:'COMPLETE_OATH' })} style={{
+            flex:1, padding:'8px', borderRadius:6, cursor:'pointer',
+            background:'rgba(46,204,113,0.12)', border:'1px solid rgba(46,204,113,0.4)',
+            color:'#2ECC71', fontFamily:'Cinzel,serif', fontSize:10, letterSpacing:1
+          }}>✅ FULFILLED</button>
+          <button onClick={() => dispatch({ type:'CLEAR_OATH' })} style={{
+            flex:1, padding:'8px', borderRadius:6, cursor:'pointer',
+            background:'rgba(231,76,60,0.08)', border:'1px solid rgba(231,76,60,0.3)',
+            color:'var(--crimson)', fontFamily:'Cinzel,serif', fontSize:10, letterSpacing:1
+          }}>🔓 BREAK OATH</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (oath.completed) {
+    return (
+      <div style={{ padding:'12px', borderRadius:8, background:'rgba(46,204,113,0.06)', border:'1px solid rgba(46,204,113,0.3)', textAlign:'center' }}>
+        <div style={{ fontSize:9, color:'#2ECC71', letterSpacing:3, marginBottom:6 }}>OATH FULFILLED ✅</div>
+        <div style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic', marginBottom:10 }}>"{oath.text}"</div>
+        <button onClick={() => dispatch({ type:'CLEAR_OATH' })} className="btn-mana" style={{ fontSize:10, padding:'6px 14px' }}>
+          SET NEW OATH
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:8, lineHeight:1.6 }}>
+        Write a commitment that will be shown every time you open the app until it's fulfilled.
+      </div>
+      <textarea className="input-dark scrollable" value={draft} onChange={e => setDraft(e.target.value)}
+        placeholder="I will complete every quest this week without a single failure..."
+        style={{ minHeight:64, fontSize:12, lineHeight:1.7, marginBottom:8, resize:'none' }}/>
+      <button disabled={!draft.trim()} onClick={() => {
+        dispatch({ type:'SET_OATH', payload: draft.trim() });
+        setDraft('');
+      }} className="btn-mana" style={{ width:'100%', fontSize:11, padding:'9px', opacity: draft.trim() ? 1 : 0.4 }}>
+        🔒 LOCK IN OATH
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATS SNAPSHOT / BEFORE-AFTER
+// ─────────────────────────────────────────────────────────────────────────────
+function StatsSnapshotPanel({ state, dispatch }) {
+  const snap = state.statSnapshot;
+  const statDefs = getStatDefs(state);
+  const current = state.stats;
+
+  if (!snap) return (
+    <div style={{ textAlign:'center' }}>
+      <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10, lineHeight:1.6 }}>
+        Save today's stats as a checkpoint. Come back later to see how much you've grown.
+      </div>
+      <button onClick={() => dispatch({ type:'SAVE_SNAPSHOT' })} className="btn-gold" style={{ fontSize:10, padding:'7px 16px' }}>
+        📸 SAVE SNAPSHOT
+      </button>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:2, marginBottom:8 }}>
+        SNAPSHOT: {snap.date} — {Math.floor((Date.now() - new Date(snap.date).getTime()) / 86400000)} days ago
+      </div>
+      {statDefs.map(s => {
+        const then = snap.stats[s.key] || 1;
+        const now = current[s.key] || 1;
+        const diff = now - then;
+        return (
+          <div key={s.key} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+            <span style={{ width:26, fontSize:10, color:s.color, fontFamily:'Cinzel,serif' }}>{s.abbr}</span>
+            <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.04)', borderRadius:3, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${Math.min(100, (then/100)*100)}%`, background:`${s.color}44`, borderRadius:3 }}/>
+            </div>
+            <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.04)', borderRadius:3, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${Math.min(100,(now/100)*100)}%`, background:s.color, borderRadius:3, boxShadow:`0 0 4px ${s.color}88` }}/>
+            </div>
+            <span style={{ width:32, fontSize:10, textAlign:'right', color: diff > 0 ? '#2ECC71' : diff < 0 ? 'var(--crimson)' : 'var(--text-dim)', fontFamily:'Cinzel,serif' }}>
+              {diff > 0 ? `+${diff}` : diff === 0 ? '—' : diff}
+            </span>
+          </div>
+        );
+      })}
+      <div style={{ fontSize:9, color:'var(--text-dim)', display:'flex', gap:16, marginTop:6 }}>
+        <span style={{ color:'rgba(255,255,255,0.3)' }}>■ Before</span>
+        <span style={{ color:'var(--mana)' }}>■ Now</span>
+      </div>
+      <button onClick={() => dispatch({ type:'SAVE_SNAPSHOT' })} style={{
+        width:'100%', marginTop:8, padding:'6px', borderRadius:5, cursor:'pointer',
+        background:'none', border:'1px solid rgba(255,255,255,0.08)', color:'var(--text-dim)', fontSize:10
+      }}>🔄 Update Snapshot</button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REFLECTION MODAL (after quest complete)
+// ─────────────────────────────────────────────────────────────────────────────
+function ReflectionModal({ questName, onSave, onSkip }) {
+  const [text, setText] = useState('');
+  const prompts = [
+    "What did completing this teach you?",
+    "What resistance did you overcome?",
+    "How does this move you closer to who you're becoming?",
+    "What would you tell your past self about this?",
+    "What's the hardest part you pushed through?",
+  ];
+  const [prompt] = useState(prompts[Math.floor(Math.random() * prompts.length)]);
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:24, backdropFilter:'blur(6px)' }}>
+      <div className="panel" style={{ maxWidth:360, width:'100%', padding:24, border:'1px solid rgba(155,89,182,0.4)', animation:'slideIn 0.3s ease-out' }}>
+        <div style={{ fontSize:9, color:'var(--violet)', letterSpacing:4, marginBottom:6 }}>REFLECTION PROTOCOL</div>
+        <div className="cinzel" style={{ fontSize:14, color:'var(--text)', marginBottom:4 }}>Quest Cleared</div>
+        <div style={{ fontSize:11, color:'var(--gold)', marginBottom:14 }}>"{questName}"</div>
+        <div style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', marginBottom:10, lineHeight:1.6 }}>
+          {prompt}
+        </div>
+        <textarea className="input-dark scrollable" value={text} onChange={e => setText(e.target.value)}
+          placeholder="Write your reflection..."
+          style={{ minHeight:80, fontSize:12, lineHeight:1.7, marginBottom:12, resize:'none' }}/>
+        <div style={{ display:'flex', gap:8 }}>
+          <button className="btn-mana" style={{ flex:1, fontSize:10, padding:'8px' }} onClick={() => text.trim() && onSave(text.trim())}>
+            💾 ARCHIVE REFLECTION
+          </button>
+          <button onClick={onSkip} style={{ padding:'8px 12px', borderRadius:6, cursor:'pointer', background:'none', border:'1px solid rgba(255,255,255,0.08)', color:'var(--text-dim)', fontSize:10 }}>
+            SKIP
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOSS FIGHT OVERLAY
+// ─────────────────────────────────────────────────────────────────────────────
+function BossFightOverlay({ boss, onDefeat, onFlee }) {
+  const [hp, setHp] = useState(100);
+  const [attacking, setAttacking] = useState(false);
+  const [defeated, setDefeated] = useState(false);
+  const [hits, setHits] = useState(0);
+
+  const attack = () => {
+    if (attacking || defeated) return;
+    setAttacking(true);
+    const dmg = Math.floor(Math.random() * 20) + 15;
+    const newHp = Math.max(0, hp - dmg);
+    setTimeout(() => {
+      setHp(newHp);
+      setHits(h => h + 1);
+      setAttacking(false);
+      if (newHp <= 0) setDefeated(true);
+    }, 400);
+  };
+
+  const bossColor = hp > 60 ? '#E74C3C' : hp > 30 ? '#F39C12' : '#9B59B6';
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.96)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, backdropFilter:'blur(8px)' }}>
+      {/* Background particles */}
+      {[...Array(12)].map((_,i) => (
+        <div key={i} style={{ position:'absolute', left:`${Math.random()*100}%`, top:`${Math.random()*100}%`, width:2, height:2, background:bossColor, borderRadius:'50%', animation:`breathe ${1+Math.random()*2}s ease-in-out ${Math.random()}s infinite` }}/>
+      ))}
+
+      <div style={{ textAlign:'center', maxWidth:340, width:'100%' }}>
+        <div style={{ fontSize:9, color:'rgba(231,76,60,0.6)', letterSpacing:6, marginBottom:12 }}>BOSS ENCOUNTER</div>
+
+        {defeated ? (
+          <>
+            <div style={{ fontSize:80, marginBottom:8, animation:'levelUpFlash 0.8s ease-out' }}>💥</div>
+            <div className="cinzel" style={{ fontSize:28, color:'#FFD700', textShadow:'0 0 30px #FFD700', marginBottom:6 }}>BOSS DEFEATED</div>
+            <div style={{ fontSize:14, color:'var(--text)', marginBottom:16 }}>{boss.name} has fallen.</div>
+            <div className="cinzel" style={{ fontSize:20, color:'var(--gold)', marginBottom:24 }}>+{boss.xpReward.toLocaleString()} XP</div>
+            <button onClick={onDefeat} style={{ padding:'14px 40px', borderRadius:8, cursor:'pointer', background:'rgba(255,215,0,0.15)', border:'2px solid #FFD700', color:'#FFD700', fontFamily:'Cinzel,serif', fontSize:14, letterSpacing:3 }}>
+              CLAIM VICTORY
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize:72, marginBottom:8, animation: attacking ? 'bossHit 0.3s ease-out' : 'bossFloat 3s ease-in-out infinite' }} className={attacking ? 'boss-hit' : 'boss-anim'}>
+              {boss.emoji}
+            </div>
+            <div className="cinzel" style={{ fontSize:20, color:bossColor, marginBottom:4, textShadow:`0 0 20px ${bossColor}` }}>
+              {boss.name}
+            </div>
+            <div style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic', marginBottom:16 }}>{boss.desc}</div>
+
+            {/* Boss HP Bar */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, fontSize:10 }}>
+                <span style={{ color:'var(--text-dim)' }}>BOSS HP</span>
+                <span style={{ color:bossColor }}>{hp}%</span>
+              </div>
+              <div style={{ height:12, background:'rgba(255,255,255,0.06)', borderRadius:6, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${hp}%`, background:`linear-gradient(90deg, ${bossColor}88, ${bossColor})`, borderRadius:6, transition:'width 0.4s ease', boxShadow:`0 0 10px ${bossColor}66` }}/>
+              </div>
+            </div>
+
+            <div style={{ padding:'10px 14px', marginBottom:20, borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', fontSize:11, color:'var(--text-dim)', lineHeight:1.6 }}>
+              <span style={{ color:'var(--gold)' }}>⚔️ Challenge:</span> {boss.challenge}
+            </div>
+
+            <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
+              <button onClick={attack} style={{
+                padding:'14px 32px', borderRadius:8, cursor: attacking ? 'default' : 'pointer',
+                background:`rgba(${hp>60?'231,76,60':hp>30?'243,156,18':'155,89,182'},0.2)`,
+                border:`2px solid ${bossColor}`,
+                color:bossColor, fontFamily:'Cinzel,serif', fontSize:13, letterSpacing:2,
+                opacity: attacking ? 0.6 : 1, transition:'all 0.2s',
+                boxShadow: attacking ? 'none' : `0 0 15px ${bossColor}44`,
+              }}>
+                {attacking ? '...' : '⚔️ ATTACK'}
+              </button>
+              <button onClick={onFlee} style={{ padding:'14px 24px', borderRadius:8, cursor:'pointer', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text-dim)', fontSize:11 }}>
+                FLEE
+              </button>
+            </div>
+            <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:12 }}>Hits landed: {hits}</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SYSTEM VOICE OVERLAY (inactivity warning)
+// ─────────────────────────────────────────────────────────────────────────────
+function SystemVoiceOverlay({ message, onDismiss }) {
+  return (
+    <div onClick={onDismiss} style={{ position:'fixed', inset:0, zIndex:970, background:'rgba(0,0,0,0.94)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:32, backdropFilter:'blur(8px)' }}>
+      <div style={{ textAlign:'center', maxWidth:320 }}>
+        <div style={{ fontSize:9, color:'rgba(155,89,182,0.7)', letterSpacing:6, marginBottom:20 }}>SYSTEM ALERT</div>
+        <div style={{ fontSize:48, marginBottom:16, animation:'breathe 2s ease-in-out infinite' }}>👁️</div>
+        <div className="cinzel" style={{ fontSize:20, color:'var(--violet)', marginBottom:12, textShadow:'0 0 20px var(--violet)', lineHeight:1.4 }}>
+          {message.msg}
+        </div>
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', lineHeight:1.8, marginBottom:24 }}>
+          {message.sub}
+        </div>
+        <div style={{ fontSize:10, color:'rgba(155,89,182,0.5)', letterSpacing:2 }}>TAP TO RISE</div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY REVIEW SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+function WeeklyReviewScreen({ state, dispatch, addXP, showNotif }) {
+  const weekId = getWeekId();
+  const existing = (state.weeklyReviews||[]).find(w => w.weekId === weekId);
+  const [highlights, setHighlights] = useState(existing?.highlights || '');
+  const [lowlights, setLowlights] = useState(existing?.lowlights || '');
+  const [focusNext, setFocusNext] = useState(existing?.focusNext || '');
+  const [letter, setLetter] = useState(existing?.letter || '');
+  const [view, setView] = useState('write');
+  const [saved, setSaved] = useState(!!existing);
+
+  const xpLog = state.xpLog || [];
+  const days = getWeekDates();
+  const weekXP = days.reduce((s,d) => s + (xpLog.find(e=>e.date===d)?.xp||0), 0);
+  const questsDone = (state.quests.daily||[]).filter(q => {
+    const d = new Date(q.date+'T12:00:00');
+    return q.completed && days.includes(q.date);
+  }).length;
+  const habitStreak = (state.habits||[]).reduce((s,h) => s + (h.streak||0), 0);
+  const penaltyXP = (state.penaltyLog||[]).filter(p=>days.includes(p.date)).reduce((s,p)=>s+(p.xp||0),0);
+
+  const save = () => {
+    dispatch({ type:'SAVE_WEEKLY_REVIEW', payload:{ highlights, lowlights, focusNext, letter }});
+    addXP(200, 'weekly_review');
+    setSaved(true);
+    showNotif('📜 WEEKLY REVIEW SAVED · +200 XP');
+  };
+
+  const past = [...(state.weeklyReviews||[])].reverse().slice(0, 8);
+
+  return (
+    <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      <div style={{ padding:'12px 16px' }}>
+        <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3, marginBottom:4 }}>WEEKLY REVIEW</div>
+        <div style={{ display:'flex', gap:6, marginBottom:4 }}>
+          {['write','history'].map(v=>(
+            <button key={v} onClick={()=>setView(v)} style={{
+              flex:1, padding:'6px', fontSize:10, borderRadius:6, cursor:'pointer',
+              border: view===v ? '1px solid var(--mana)' : '1px solid var(--border)',
+              background: view===v ? 'rgba(79,195,247,0.15)' : 'transparent',
+              color: view===v ? 'var(--mana)' : 'var(--text-dim)', fontFamily:'Cinzel,serif'
+            }}>{v==='write'?'📝 THIS WEEK':'📚 ARCHIVE'}</button>
+          ))}
+        </div>
+      </div>
+
+      {view==='write' && (
+        <div className="scrollable" style={{ flex:1, padding:'0 16px 24px', display:'flex', flexDirection:'column', gap:12 }}>
+          {/* Week Stats */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
+            {[
+              { l:'XP EARNED', v:weekXP.toLocaleString(), c:'var(--mana)' },
+              { l:'QUESTS', v:questsDone, c:'var(--gold)' },
+              { l:'STREAK', v:habitStreak, c:'#2ECC71' },
+              { l:'PENALTY', v:penaltyXP > 0 ? `-${penaltyXP}` : '0', c: penaltyXP>0?'var(--crimson)':'#2ECC71' },
+            ].map(s=>(
+              <div key={s.l} className="panel" style={{ padding:'8px 6px', textAlign:'center' }}>
+                <div className="cinzel" style={{ fontSize:14, color:s.c }}>{s.v}</div>
+                <div style={{ fontSize:7, color:'var(--text-dim)', letterSpacing:1 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Review sections */}
+          {[
+            { label:'🏆 WINS THIS WEEK', key:'highlights', value:highlights, set:setHighlights, ph:'What did you crush? What are you proud of?' },
+            { label:'⚠️ BATTLES LOST', key:'lowlights', value:lowlights, set:setLowlights, ph:'Where did you fall short? What patterns did you notice?' },
+            { label:'⚡ FOCUS NEXT WEEK', key:'focusNext', value:focusNext, set:setFocusNext, ph:'What single thing, if done well, will make next week great?' },
+            { label:'✉️ LETTER TO FUTURE SELF', key:'letter', value:letter, set:setLetter, ph:'What does your future self need to hear from you right now?' },
+          ].map(section=>(
+            <div key={section.key} className="panel" style={{ padding:14 }}>
+              <div style={{ fontSize:10, color:'var(--mana)', letterSpacing:2, marginBottom:8 }}>{section.label}</div>
+              <textarea className="input-dark scrollable" value={section.value} onChange={e=>section.set(e.target.value)}
+                placeholder={section.ph}
+                style={{ minHeight:64, fontSize:12, lineHeight:1.7, resize:'none' }}/>
+            </div>
+          ))}
+
+          <button onClick={save} className="btn-mana" style={{ padding:'12px', fontSize:12, letterSpacing:2 }}>
+            {saved ? '✅ SAVED · UPDATE REVIEW' : '💾 SAVE WEEKLY REVIEW · +200 XP'}
+          </button>
+        </div>
+      )}
+
+      {view==='history' && (
+        <div className="scrollable" style={{ flex:1, padding:'0 16px 24px' }}>
+          {past.length === 0 && (
+            <div style={{ textAlign:'center', padding:40, color:'var(--text-dim)' }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>📚</div>
+              No reviews yet. Complete your first weekly review to start your archive.
+            </div>
+          )}
+          {past.map(r=>(
+            <div key={r.weekId} className="panel" style={{ padding:14, marginBottom:10 }}>
+              <div className="cinzel" style={{ fontSize:11, color:'var(--mana)', marginBottom:10, letterSpacing:2 }}>Week {r.weekId}</div>
+              {r.highlights && <div style={{ marginBottom:8 }}><div style={{ fontSize:9, color:'#2ECC71', letterSpacing:2, marginBottom:4 }}>🏆 WINS</div><div style={{ fontSize:12, color:'var(--text)', lineHeight:1.6 }}>{r.highlights}</div></div>}
+              {r.lowlights && <div style={{ marginBottom:8 }}><div style={{ fontSize:9, color:'var(--gold)', letterSpacing:2, marginBottom:4 }}>⚠️ BATTLES</div><div style={{ fontSize:12, color:'var(--text)', lineHeight:1.6 }}>{r.lowlights}</div></div>}
+              {r.focusNext && <div style={{ marginBottom:8 }}><div style={{ fontSize:9, color:'var(--mana)', letterSpacing:2, marginBottom:4 }}>⚡ FOCUS</div><div style={{ fontSize:12, color:'var(--text)', lineHeight:1.6 }}>{r.focusNext}</div></div>}
+              {r.letter && <div><div style={{ fontSize:9, color:'var(--violet)', letterSpacing:2, marginBottom:4 }}>✉️ LETTER</div><div style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.6, fontStyle:'italic' }}>{r.letter}</div></div>}
+              <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:10 }}>{new Date(r.savedAt).toLocaleDateString()}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GROWTH HUB SCREEN (new nav tab)
+// ─────────────────────────────────────────────────────────────────────────────
+function GrowthScreen({ state, dispatch, addXP, showNotif }) {
+  const [section, setSection] = useState('overview');
+  const sections = [
+    { k:'overview', label:'OVERVIEW', emoji:'📊' },
+    { k:'clone', label:'SHADOW CLONE', emoji:'👥' },
+    { k:'roadmap', label:'ROADMAP', emoji:'🗺️' },
+    { k:'snapshot', label:'BEFORE/AFTER', emoji:'📸' },
+    { k:'review', label:'WEEKLY', emoji:'📝' },
+  ];
+
+  return (
+    <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      <div style={{ padding:'12px 16px 0' }}>
+        <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3, marginBottom:10 }}>GROWTH HUB</div>
+        <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:8 }}>
+          {sections.map(s=>(
+            <button key={s.k} onClick={()=>setSection(s.k)} style={{
+              flexShrink:0, padding:'5px 10px', fontSize:9, borderRadius:6, cursor:'pointer',
+              border: section===s.k ? '1px solid var(--mana)' : '1px solid var(--border)',
+              background: section===s.k ? 'rgba(79,195,247,0.15)' : 'rgba(10,10,20,0.6)',
+              color: section===s.k ? 'var(--mana)' : 'var(--text-dim)', fontFamily:'Cinzel,serif', letterSpacing:0.5
+            }}>{s.emoji} {s.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="scrollable" style={{ flex:1, padding:'8px 16px 24px' }}>
+        {section === 'overview' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div className="panel" style={{ padding:16 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>CONSISTENCY SCORE</div>
+              <ConsistencyScore state={state}/>
+            </div>
+            <div className="panel" style={{ padding:16 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>XP VELOCITY</div>
+              <XpVelocityChart xpLog={state.xpLog||[]}/>
+            </div>
+            <div className="panel" style={{ padding:16, borderColor:'rgba(231,76,60,0.3)' }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--crimson)', letterSpacing:3, marginBottom:12 }}>⚠️ COST OF LAZINESS</div>
+              <PenaltyVisibilityPanel state={state}/>
+            </div>
+          </div>
+        )}
+
+        {section === 'clone' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div className="panel" style={{ padding:16 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>SHADOW CLONE BATTLE</div>
+              <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:14, lineHeight:1.6 }}>
+                Your shadow clone is last week's you. Beat it every week to keep improving.
+              </div>
+              <ShadowClonePanel state={state}/>
+            </div>
+            <div className="panel" style={{ padding:16 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>BEFORE / AFTER</div>
+              <StatsSnapshotPanel state={state} dispatch={dispatch}/>
+            </div>
+          </div>
+        )}
+
+        {section === 'roadmap' && (
+          <div className="panel" style={{ padding:16 }}>
+            <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:16 }}>RANK PROGRESSION ROADMAP</div>
+            <MilestoneRoadmap state={state}/>
+            <div style={{ marginTop:20, borderTop:'1px solid var(--border)', paddingTop:16 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--gold)', letterSpacing:3, marginBottom:12 }}>BOSS ENCOUNTERS</div>
+              {Object.entries(BOSS_DATA).map(([r, boss]) => {
+                const defeated = (state.bossDefeated||[]).includes(r);
+                const unlocked = RANKS.indexOf(state.hunter.rank) >= RANKS.indexOf(r);
+                const color = RANK_COLORS[r] || '#6a7a9a';
+                return (
+                  <div key={r} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px', marginBottom:6, borderRadius:8, background: defeated ? 'rgba(46,204,113,0.05)' : unlocked ? `${color}08` : 'rgba(255,255,255,0.02)', border:`1px solid ${defeated ? 'rgba(46,204,113,0.3)' : unlocked ? `${color}33` : 'rgba(255,255,255,0.06)'}` }}>
+                    <div style={{ fontSize:24, opacity: unlocked ? 1 : 0.3 }}>{boss.emoji}</div>
+                    <div style={{ flex:1 }}>
+                      <div className="cinzel" style={{ fontSize:11, color: defeated ? '#2ECC71' : unlocked ? color : 'var(--text-dim)' }}>{boss.name}</div>
+                      <div style={{ fontSize:10, color:'var(--text-dim)' }}>{boss.challenge}</div>
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      {defeated ? <span style={{ fontSize:16 }}>✅</span> : <span className="cinzel" style={{ fontSize:9, color: unlocked ? color : 'var(--text-dim)' }}>{unlocked ? `${boss.xpReward.toLocaleString()} XP` : '🔒'}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {section === 'snapshot' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div className="panel" style={{ padding:16 }}>
+              <div className="cinzel" style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>STAT SNAPSHOT</div>
+              <StatsSnapshotPanel state={state} dispatch={dispatch}/>
+            </div>
+            {(state.reflections||[]).length > 0 && (
+              <div className="panel" style={{ padding:16 }}>
+                <div className="cinzel" style={{ fontSize:10, color:'var(--violet)', letterSpacing:3, marginBottom:12 }}>REFLECTION ARCHIVE</div>
+                {[...(state.reflections||[])].reverse().slice(0,8).map(r=>(
+                  <div key={r.id} style={{ padding:'10px', marginBottom:8, borderRadius:6, background:'rgba(155,89,182,0.05)', border:'1px solid rgba(155,89,182,0.15)' }}>
+                    <div style={{ fontSize:10, color:'var(--gold)', marginBottom:4 }}>"{r.questName}"</div>
+                    <div style={{ fontSize:12, color:'var(--text)', lineHeight:1.6, fontStyle:'italic' }}>"{r.text}"</div>
+                    <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:4 }}>{new Date(r.date).toLocaleDateString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {section === 'review' && (
+          <WeeklyReviewScreen state={state} dispatch={dispatch} addXP={addXP} showNotif={showNotif}/>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatusScreen({ state, dispatch, addXP, showNotif }) {
   const { hunter, stats, quests, habits } = state;
   const statDefs = getStatDefs(state);
   const today = todayStr();
@@ -1902,8 +3156,16 @@ function StatusScreen({ state, dispatch, addXP }) {
 
       {/* Stats Radar Chart */}
       <div className="panel" style={{ padding:16, flexShrink:0 }}>
-        <div className="cinzel" style={{ fontSize:12, color:'var(--text-dim)', letterSpacing:3, marginBottom:14 }}>CORE ATTRIBUTES</div>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <div className="cinzel" style={{ fontSize:12, color:'var(--text-dim)', letterSpacing:3 }}>CORE ATTRIBUTES</div>
+          <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>CLICK STAT TO EXPAND</div>
+        </div>
         <RadarChart stats={stats} statDefs={statDefs}/>
+        <div style={{ marginTop:14, borderTop:'1px solid var(--border)', paddingTop:12 }}>
+          {statDefs.map(s => (
+            <StatBar key={s.key} label={s.key} abbr={s.abbr} value={stats[s.key]||1} color={s.color} icon={s.icon} desc={s.desc} boosts={s.boosts}/>
+          ))}
+        </div>
       </div>
 
       {/* XP Boost Panel */}
@@ -1943,6 +3205,49 @@ function StatusScreen({ state, dispatch, addXP }) {
       <div className="panel" style={{ padding:16, borderColor:'rgba(155,89,182,0.3)', textAlign:'center', flexShrink:0 }}>
         <div style={{ fontSize:11, color:'var(--violet)', letterSpacing:2, marginBottom:8 }}>SYSTEM MESSAGE</div>
         <div style={{ fontSize:13, color:'var(--text)', lineHeight:1.7, fontStyle:'italic' }}>"{quote}"</div>
+      </div>
+
+      {/* Daily Affirmation */}
+      {(() => {
+        const affList = AFFIRMATIONS[hunter.rank] || AFFIRMATIONS.E;
+        const aff = affList[Math.floor(Date.now() / 86400000) % affList.length];
+        // Find weakest stat
+        const statDefs2 = getStatDefs(state);
+        const weakest = statDefs2.reduce((w, s) => (stats[s.key]||1) < (stats[w.key]||1) ? s : w, statDefs2[0]);
+        return (
+          <div className="panel" style={{ padding:16, borderColor:`${RANK_COLORS[hunter.rank] || 'var(--mana)'}44`, background:`${RANK_COLORS[hunter.rank] || '#4FC3F7'}06`, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+              <span style={{ fontSize:16 }}>🌅</span>
+              <div style={{ fontSize:9, color:RANK_COLORS[hunter.rank]||'var(--mana)', letterSpacing:3 }}>DAILY AFFIRMATION</div>
+            </div>
+            <div className="cinzel" style={{ fontSize:13, color:'var(--text)', lineHeight:1.8, fontStyle:'italic', marginBottom:8 }}>
+              "{aff}"
+            </div>
+            <div style={{ fontSize:10, color:'var(--text-dim)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:8, marginTop:4 }}>
+              Focus today: <span style={{ color:weakest?.color||'var(--mana)' }}>{weakest?.label||'All Stats'}</span> — your weakest attribute. Boost it with {(STAT_TIER_INFO[weakest?.key]?.boosts||['action'])[0]}.
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Oath banner (if active) */}
+      {state.oath?.lockedAt && !state.oath?.completed && (
+        <div style={{ padding:'12px 16px', borderRadius:8, background:'rgba(155,89,182,0.08)', border:'2px solid rgba(155,89,182,0.4)', flexShrink:0, textAlign:'center' }}>
+          <div style={{ fontSize:9, color:'var(--violet)', letterSpacing:3, marginBottom:6 }}>🔒 ACTIVE OATH</div>
+          <div className="cinzel" style={{ fontSize:13, color:'var(--text)', lineHeight:1.6, fontStyle:'italic' }}>"{state.oath.text}"</div>
+        </div>
+      )}
+
+      {/* Big Three */}
+      <div className="panel" style={{ padding:16, borderColor:'rgba(243,156,18,0.3)', flexShrink:0 }}>
+        <div className="cinzel" style={{ fontSize:10, color:'var(--gold)', letterSpacing:3, marginBottom:12 }}>⚡ THE BIG THREE</div>
+        <BigThreePanel state={state} dispatch={dispatch}/>
+      </div>
+
+      {/* Identity Statement */}
+      <div className="panel" style={{ padding:16, flexShrink:0 }}>
+        <div className="cinzel" style={{ fontSize:10, color:'var(--mana)', letterSpacing:3, marginBottom:12 }}>🧬 I AM...</div>
+        <IdentityPanel state={state} dispatch={dispatch}/>
       </div>
 
       {/* Personal Mantra */}
@@ -2106,7 +3411,71 @@ function ConfirmModal({ config, onConfirm, onCancel }) {
   );
 }
 
-function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) {
+// ─── QUEST EXTRAS FORM (extracted to avoid remount-on-rerender bug) ───────────
+function QuestExtrasForm({ newQuest, setNewQuest, state }) {
+  const customRewards = state.customRewards || [];
+  const statDefs = getStatDefs(state);
+  return (
+    <>
+      {/* Multi-Stat Rewards */}
+      <div style={{ marginBottom:12, padding:'10px 12px', border:'1px solid rgba(79,195,247,0.2)', borderRadius:8, background:'rgba(79,195,247,0.03)' }}>
+        <div style={{ fontSize:10, color:'var(--mana)', letterSpacing:2, marginBottom:8 }}>📊 STAT REWARDS ON COMPLETION (up to 2)</div>
+        {newQuest.statRewards.map((sr, idx) => (
+          <div key={idx} style={{ display:'flex', gap:8, marginBottom:8 }}>
+            <select className="input-dark" value={sr.stat} onChange={e => {
+              const updated = [...newQuest.statRewards];
+              updated[idx] = { ...updated[idx], stat: e.target.value };
+              setNewQuest(p => ({ ...p, statRewards: updated }));
+            }} style={{ flex:2 }}>
+              <option value="">— None —</option>
+              {statDefs.map(s => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
+            </select>
+            {sr.stat && (
+              <input className="input-dark" type="number" min={1} max={99} value={sr.amount}
+                onChange={e => {
+                  const updated = [...newQuest.statRewards];
+                  updated[idx] = { ...updated[idx], amount: Math.max(1, +e.target.value||1) };
+                  setNewQuest(p => ({ ...p, statRewards: updated }));
+                }}
+                style={{ flex:1, padding:'8px 10px' }} placeholder="+amt"/>
+            )}
+          </div>
+        ))}
+        {newQuest.statRewards.filter(s=>s.stat).length > 0 && (
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:4 }}>
+            {newQuest.statRewards.filter(s=>s.stat).map((sr,i) => {
+              const def = statDefs.find(s=>s.key===sr.stat);
+              return def ? (
+                <span key={i} style={{ fontSize:10, color:def.color, border:`1px solid ${def.color}44`, borderRadius:3, padding:'2px 7px', background:`${def.color}0d` }}>
+                  {def.icon} +{sr.amount} {def.abbr}
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
+        <div style={{ fontSize:10, color:'var(--text-dim)', marginTop:6 }}>Stats increase permanently on completion.</div>
+      </div>
+      {/* Reward Association */}
+      {customRewards.length > 0 && (
+        <div style={{ marginBottom:12 }}>
+          <label style={{ display:'block', fontSize:11, color:'var(--text-dim)', marginBottom:6 }}>LINKED REAL-WORLD REWARD</label>
+          <select className="input-dark" value={newQuest.rewardId} onChange={e=>setNewQuest(p=>({...p,rewardId:e.target.value}))}>
+            <option value="">None</option>
+            {customRewards.map(r=><option key={r.id} value={r.id}>{r.emoji} {r.name}</option>)}
+          </select>
+          <div style={{ fontSize:10, color:'var(--text-dim)', marginTop:4 }}>You'll earn this reward when quest is completed.</div>
+        </div>
+      )}
+      {customRewards.length === 0 && (
+        <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:12, padding:'8px 12px', border:'1px solid var(--border)', borderRadius:6, background:'rgba(79,195,247,0.03)' }}>
+          💡 Create custom rewards in the Rewards → Custom tab to link them to quests.
+        </div>
+      )}
+    </>
+  );
+}
+
+function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty, setPendingReflection }) {
   const statDefs = getStatDefs(state);
   const [tab, setTab] = useState('daily');
   const [tick, setTick] = useState(0); // forces re-render every second for live timers
@@ -2238,62 +3607,11 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
       addXP(totalXP, 'quest');
       sfx('questComplete');
       showNotif('MAIN QUEST COMPLETE!' + (q.rewardId ? ' 🎁 REWARD EARNED' : ''));
+      if (setPendingReflection) setTimeout(() => setPendingReflection(q.name), 800);
     });
   };
 
-  const STAT_OPTIONS = [
-    { value:'', label:'None' },
-    ...getStatDefs(state).map(s => ({ value: s.key, label: `${s.icon} ${s.label}` }))
-  ];
-
   const customRewards = state.customRewards || [];
-
-  const QuestExtrasForm = () => (
-    <>
-      {/* Multi-Stat Rewards */}
-      <div style={{ marginBottom:12, padding:'10px 12px', border:'1px solid rgba(79,195,247,0.2)', borderRadius:8, background:'rgba(79,195,247,0.03)' }}>
-        <div style={{ fontSize:10, color:'var(--mana)', letterSpacing:2, marginBottom:8 }}>📊 STAT REWARDS ON COMPLETION (up to 2)</div>
-        {newQuest.statRewards.map((sr, idx) => (
-          <div key={idx} style={{ display:'flex', gap:8, marginBottom:8 }}>
-            <select className="input-dark" value={sr.stat} onChange={e => {
-              const updated = [...newQuest.statRewards];
-              updated[idx] = { ...updated[idx], stat: e.target.value };
-              setNewQuest(p => ({ ...p, statRewards: updated }));
-            }} style={{ flex:2 }}>
-              <option value="">None</option>
-              {getStatDefs(state).map(s => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
-            </select>
-            {sr.stat && (
-              <input className="input-dark" type="number" min={1} max={99} value={sr.amount}
-                onChange={e => {
-                  const updated = [...newQuest.statRewards];
-                  updated[idx] = { ...updated[idx], amount: Math.max(1, +e.target.value||1) };
-                  setNewQuest(p => ({ ...p, statRewards: updated }));
-                }}
-                style={{ flex:1, padding:'8px 10px' }} placeholder="+amt"/>
-            )}
-          </div>
-        ))}
-        <div style={{ fontSize:10, color:'var(--text-dim)' }}>Stats increase permanently on completion.</div>
-      </div>
-      {/* Reward Association */}
-      {customRewards.length > 0 && (
-        <div style={{ marginBottom:12 }}>
-          <label style={{ display:'block', fontSize:11, color:'var(--text-dim)', marginBottom:6 }}>LINKED REAL-WORLD REWARD</label>
-          <select className="input-dark" value={newQuest.rewardId} onChange={e=>setNewQuest(p=>({...p,rewardId:e.target.value}))}>
-            <option value="">None</option>
-            {customRewards.map(r=><option key={r.id} value={r.id}>{r.emoji} {r.name}</option>)}
-          </select>
-          <div style={{ fontSize:10, color:'var(--text-dim)', marginTop:4 }}>You'll earn this reward when quest is completed.</div>
-        </div>
-      )}
-      {customRewards.length === 0 && (
-        <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:12, padding:'8px 12px', border:'1px solid var(--border)', borderRadius:6, background:'rgba(79,195,247,0.03)' }}>
-          💡 Create custom rewards in the Rewards → Custom tab to link them to quests.
-        </div>
-      )}
-    </>
-  );
 
   const TABS = [
     { k:'daily', label:'Daily', icon:'⚡' },
@@ -2613,7 +3931,7 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
               </div>
               {newQuest.subQuests.length > 0 && <div style={{ marginTop:6, fontSize:10, color:'var(--gold)' }}>Total: <span className="cinzel">{newQuest.subQuests.reduce((a,s)=>a+(s.xp||0),0)} XP</span></div>}
             </div>
-            <QuestExtrasForm/>
+            <QuestExtrasForm newQuest={newQuest} setNewQuest={setNewQuest} state={state}/>
             <div style={{ display:'flex', gap:8 }}>
               <button style={{
                 flex:1, padding:'11px', borderRadius:6, cursor:'pointer',
@@ -2672,7 +3990,7 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
               </div>
               {newQuest.subQuests.length > 0 && <div style={{ marginTop:6, fontSize:10, color:'var(--gold)' }}>Total: <span className="cinzel">{newQuest.subQuests.reduce((a,s)=>a+(s.xp||0),0)} XP</span></div>}
             </div>
-            <QuestExtrasForm/>
+            <QuestExtrasForm newQuest={newQuest} setNewQuest={setNewQuest} state={state}/>
             <div style={{ display:'flex', gap:8, marginTop:8 }}>
               <button className="btn-mana" style={{ flex:1 }} onClick={()=>{
                 if(!newQuest.name) return;
@@ -2721,7 +4039,7 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
               </div>
               {newQuest.subQuests.length > 0 && <div style={{ marginTop:6, fontSize:10, color:'var(--gold)' }}>Total: <span className="cinzel">{newQuest.subQuests.reduce((a,s)=>a+(s.xp||0),0)} XP</span></div>}
             </div>
-            <QuestExtrasForm/>
+            <QuestExtrasForm newQuest={newQuest} setNewQuest={setNewQuest} state={state}/>
             <div style={{ display:'flex', gap:8, marginTop:8 }}>
               <button className="btn-mana" style={{ flex:1 }} onClick={()=>{
                 if(!newQuest.name) return;
@@ -2819,7 +4137,7 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
                     updated[idx] = {...updated[idx], stat:e.target.value};
                     setNewSideQuest(p=>({...p,statRewards:updated}));
                   }} style={{ flex:2 }}>
-                    <option value="">None</option>
+                    <option value="">— None —</option>
                     {getStatDefs(state).map(s=><option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
                   </select>
                   {sr.stat && (
@@ -2833,7 +4151,19 @@ function QuestsScreen({ state, dispatch, addXP, showNotif, sfx, applyPenalty }) 
                   )}
                 </div>
               ))}
-              <div style={{ fontSize:10, color:'var(--text-dim)' }}>Stats increase permanently when quest is completed.</div>
+              {newSideQuest.statRewards.filter(s=>s.stat).length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:2 }}>
+                  {newSideQuest.statRewards.filter(s=>s.stat).map((sr,i) => {
+                    const def = getStatDefs(state).find(s=>s.key===sr.stat);
+                    return def ? (
+                      <span key={i} style={{ fontSize:10, color:def.color, border:`1px solid ${def.color}44`, borderRadius:3, padding:'2px 7px', background:`${def.color}0d` }}>
+                        {def.icon} +{sr.amount} {def.abbr}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+              <div style={{ fontSize:10, color:'var(--text-dim)', marginTop:6 }}>Stats increase permanently when quest is completed.</div>
             </div>
 
             {/* Preview */}
@@ -4842,7 +6172,7 @@ function ManageStatsPanel({ state, dispatch, showNotif }) {
   const statDefs = getStatDefs(state);
   const [showAdd, setShowAdd] = useState(false);
   const [editingIdx, setEditingIdx] = useState(null);
-  const [newStat, setNewStat] = useState({ label:'', abbr:'', color:'#4FC3F7', icon:'⭐' });
+  const [newStat, setNewStat] = useState({ label:'', abbr:'', color:'#4FC3F7', icon:'⭐', desc:'', boosts:'' });
   const [editStat, setEditStat] = useState(null);
 
   const PRESET_COLORS = [
@@ -4855,9 +6185,9 @@ function ManageStatsPanel({ state, dispatch, showNotif }) {
     if (!newStat.label.trim()) return;
     const key = newStat.label.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + Date.now();
     const abbr = newStat.abbr.trim() || newStat.label.slice(0,3).toUpperCase();
-    const updated = [...statDefs, { key, label:newStat.label.trim(), abbr:abbr.slice(0,5).toUpperCase(), color:newStat.color, icon:newStat.icon||'⭐' }];
+    const updated = [...statDefs, { key, label:newStat.label.trim(), abbr:abbr.slice(0,5).toUpperCase(), color:newStat.color, icon:newStat.icon||'⭐', desc:newStat.desc.trim(), boosts:newStat.boosts.trim() }];
     dispatch({ type:'UPDATE_CUSTOM_STATS', payload: updated });
-    setNewStat({ label:'', abbr:'', color:'#4FC3F7', icon:'⭐' });
+    setNewStat({ label:'', abbr:'', color:'#4FC3F7', icon:'⭐', desc:'', boosts:'' });
     setShowAdd(false);
     showNotif('✨ STAT UNLOCKED');
   };
@@ -4936,6 +6266,17 @@ function ManageStatsPanel({ state, dispatch, showNotif }) {
             <input className="input-dark" value={newStat.abbr} onChange={e=>setNewStat(p=>({...p,abbr:e.target.value.toUpperCase().slice(0,5)}))}
               placeholder="ABR" style={{ width:60, textAlign:'center', fontFamily:'monospace', fontWeight:700 }}/>
           </div>
+          <div style={{ marginBottom:8 }}>
+            <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:5 }}>DESCRIPTION <span style={{ color:'rgba(255,255,255,0.3)' }}>(shown when you tap the stat bar)</span></div>
+            <textarea className="input-dark" value={newStat.desc} onChange={e=>setNewStat(p=>({...p,desc:e.target.value}))}
+              placeholder="e.g. Raw creative output and artistic problem solving ability."
+              style={{ minHeight:52, fontSize:12, lineHeight:1.6, resize:'none' }}/>
+          </div>
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:5 }}>WHAT BOOSTS THIS STAT <span style={{ color:'rgba(255,255,255,0.3)' }}>(comma separated)</span></div>
+            <input className="input-dark" value={newStat.boosts} onChange={e=>setNewStat(p=>({...p,boosts:e.target.value}))}
+              placeholder="e.g. Art quests, Journal entries, Creative projects"/>
+          </div>
           <div style={{ marginBottom:10 }}>
             <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:6 }}>COLOR</div>
             <ColorPicker value={newStat.color} onChange={c=>setNewStat(p=>({...p,color:c}))}/>
@@ -4969,6 +6310,16 @@ function ManageStatsPanel({ state, dispatch, showNotif }) {
                   <input className="input-dark" value={editStat.abbr} onChange={e=>setEditStat(p=>({...p,abbr:e.target.value.toUpperCase().slice(0,5)}))}
                     placeholder="ABR" style={{ width:60, textAlign:'center', fontFamily:'monospace', fontWeight:700 }}/>
                 </div>
+                <div style={{ marginBottom:8 }}>
+                  <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:5 }}>DESCRIPTION</div>
+                  <textarea className="input-dark" value={editStat.desc||''} onChange={e=>setEditStat(p=>({...p,desc:e.target.value}))}
+                    placeholder="What does this stat represent?" style={{ minHeight:48, fontSize:12, lineHeight:1.6, resize:'none' }}/>
+                </div>
+                <div style={{ marginBottom:10 }}>
+                  <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:5 }}>WHAT BOOSTS THIS STAT (comma separated)</div>
+                  <input className="input-dark" value={editStat.boosts||''} onChange={e=>setEditStat(p=>({...p,boosts:e.target.value}))}
+                    placeholder="e.g. Quests, Habits, Journal"/>
+                </div>
                 <div style={{ marginBottom:10 }}>
                   <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:6 }}>COLOR</div>
                   <ColorPicker value={editStat.color} onChange={c=>setEditStat(p=>({...p,color:c}))}/>
@@ -4986,6 +6337,7 @@ function ManageStatsPanel({ state, dispatch, showNotif }) {
                 <div style={{ flex:1, minWidth:0 }}>
                   <span style={{ color:s.color, fontFamily:'Cinzel,serif', fontSize:11, fontWeight:700 }}>{s.label}</span>
                   <span style={{ color:'var(--text-dim)', fontSize:10, marginLeft:6 }}>[{s.abbr}]</span>
+                  {s.desc && <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:140 }}>{s.desc}</div>}
                 </div>
                 <span style={{ color:s.color, fontFamily:'Courier New,monospace', fontSize:13, fontWeight:700, minWidth:28, textAlign:'right' }}>
                   {state.stats[s.key]||0}
@@ -5557,6 +6909,12 @@ function SettingsScreen({ state, dispatch, showNotif, sfx }) {
           </div>
         )}
 
+        {/* Public Oath */}
+        <div className="panel" style={{ padding:16, marginBottom:16 }}>
+          <div className="cinzel" style={{ fontSize:12, color:'var(--violet)', letterSpacing:3, marginBottom:12 }}>🔒 PUBLIC OATH</div>
+          <OathPanel state={state} dispatch={dispatch}/>
+        </div>
+
         {/* Personal Mantras */}
         <ManageQuotesPanel state={state} dispatch={dispatch} showNotif={showNotif}/>
 
@@ -6074,10 +7432,9 @@ const NAV_TABS = [
   { id:'health',     label:'HEALTH',     icon: Activity },
   { id:'mind',       label:'MIND',       icon: Brain },
   { id:'habits',     label:'HABITS',     icon: Flame },
-
+  { id:'growth',     label:'GROWTH',     icon: TrendingUp },
   { id:'journal',    label:'JOURNAL',    icon: ScrollText },
   { id:'rewards',    label:'REWARDS',    icon: Star },
-
   { id:'collection', label:'COLLECT',    icon: Trophy },
   { id:'antitodo',   label:'ANTI-TODO',  icon: AlertTriangle },
   { id:'settings',   label:'SETTINGS',   icon: Shield },
@@ -6344,7 +7701,6 @@ export default function App() {
   const soundEnabled = state.soundEnabled !== false; // default true
 
   const addXP = useCallback((amount, source) => {
-    // Calculate what the boosted amount will be for the float display
     const hunter = state.hunter;
     let mult = 1;
     if (hunter.boostMult && hunter.boostMult > 1) {
@@ -6352,6 +7708,7 @@ export default function App() {
     }
     const displayAmount = Math.round(amount * mult);
     dispatch({ type:'GAIN_XP', payload: amount });
+    dispatch({ type:'LOG_DAILY_XP', payload: displayAmount });
     playSound('xpGain', soundEnabled);
     const id = Date.now() + Math.random();
     const x = Math.random() * 200 + 80;
@@ -6359,6 +7716,30 @@ export default function App() {
     setFloats(f => [...f, { id, amount: displayAmount, x, y, boosted: mult > 1 }]);
     setTimeout(() => setFloats(f => f.filter(fl => fl.id !== id)), 1600);
   }, [soundEnabled, state.hunter]);
+
+  // Inactivity system voice
+  useEffect(() => {
+    if (!loaded || !state.onboarded) return;
+    const last = state.lastActivity;
+    if (!last) return;
+    const hoursGone = (Date.now() - last) / 3600000;
+    const trigger = [...SYSTEM_VOICE].reverse().find(v => hoursGone >= v.hours);
+    if (trigger) {
+      const t = setTimeout(() => setShowSystemVoice(trigger), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [loaded, state.onboarded]);
+
+  // Boss encounter check — trigger when rank-eligible and not yet defeated
+  useEffect(() => {
+    if (!loaded || !state.onboarded) return;
+    const rank = state.hunter.rank;
+    const boss = BOSS_DATA[rank];
+    if (boss && !(state.bossDefeated||[]).includes(rank)) {
+      const t = setTimeout(() => setShowBoss(boss), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [state.hunter.rank]);
 
   // Detect level up
   useEffect(() => {
@@ -6380,6 +7761,9 @@ export default function App() {
 
   const [penaltyData, setPenaltyData] = useState(null);
   const [showDeath, setShowDeath] = useState(false);
+  const [showBoss, setShowBoss] = useState(null);
+  const [showSystemVoice, setShowSystemVoice] = useState(null);
+  const [pendingReflection, setPendingReflection] = useState(null);
 
   // Detect penalty
   useEffect(() => {
@@ -6396,6 +7780,7 @@ export default function App() {
 
   const applyPenalty = useCallback((xp, reason) => {
     dispatch({ type:'APPLY_PENALTY', payload:{ xp, reason } });
+    dispatch({ type:'LOG_PENALTY', payload:{ xp: Math.round(xp * 0.5), reason } });
   }, []);
 
   const handleDeath = async () => {
@@ -6403,6 +7788,13 @@ export default function App() {
     dispatch({ type:'RESET_ALL' });
     try { await clearState(); } catch(e) {}
     setShowDeath(false);
+  };
+
+  const handleDemote = () => {
+    playSound('broken', soundEnabled);
+    dispatch({ type:'DEMOTE_RANK' });
+    setShowDeath(false);
+    showNotif('⚠️ RANK DEMOTED — RISE AGAIN, HUNTER');
   };
 
   const showNotif = useCallback((msg) => {
@@ -6458,7 +7850,7 @@ export default function App() {
     );
   }
 
-  const screenProps = { state, dispatch, addXP, showNotif, sfx, applyPenalty };
+  const screenProps = { state, dispatch, addXP, showNotif, sfx, applyPenalty, setPendingReflection };
 
   return (
     <>
@@ -6511,10 +7903,9 @@ export default function App() {
           {tab==='health'   && <HealthScreen {...screenProps}/>}
           {tab==='mind'     && <MindScreen {...screenProps}/>}
           {tab==='habits'   && <HabitsScreen {...screenProps}/>}
-
+          {tab==='growth'   && <GrowthScreen {...screenProps}/>}
           {tab==='journal'  && <JournalScreen {...screenProps}/>}
           {tab==='rewards'    && <RewardsScreen {...screenProps}/>}
-
           {tab==='collection' && <CollectionScreen {...screenProps}/>}
           {tab==='antitodo'   && <AntiTodoScreen {...screenProps}/>}
           {tab==='settings'   && <SettingsScreen {...screenProps}/>}
@@ -6607,44 +7998,109 @@ export default function App() {
         </div>
       )}
 
-      {/* Death Screen */}
+      {/* HP=0 Death Warning — 2 options */}
       {showDeath && (
         <div style={{
           position:'fixed', inset:0, zIndex:1000,
-          background:'rgba(0,0,0,0.98)',
+          background:'rgba(0,0,0,0.97)',
           display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-          backdropFilter:'blur(8px)',
+          backdropFilter:'blur(10px)',
         }}>
-          {[...Array(20)].map((_,i) => (
+          {/* Blood particle FX */}
+          {[...Array(24)].map((_,i) => (
             <div key={i} style={{
               position:'absolute',
               left:`${Math.random()*100}%`, top:`${Math.random()*100}%`,
-              width:3, height:3, background:'#E74C3C', borderRadius:'50%',
+              width: 2+Math.random()*4, height: 2+Math.random()*4,
+              background:'#E74C3C', borderRadius:'50%',
               animation:`particle ${1+Math.random()*2}s ease-out ${Math.random()*0.5}s forwards`,
               '--dx':`${(Math.random()-0.5)*300}px`, '--dy':`${(Math.random()-0.5)*300}px`
             }}/>
           ))}
-          <div className="cinzel" style={{ textAlign:'center', padding:'0 32px' }}>
-            <div style={{ fontSize:13, color:'#E74C3C44', letterSpacing:8, marginBottom:20 }}>SYSTEM MESSAGE</div>
-            <div style={{ fontSize:72, marginBottom:8 }}>☠️</div>
-            <div style={{ fontSize:48, fontWeight:900, color:'var(--crimson)',
-              textShadow:'0 0 30px #E74C3C, 0 0 60px #E74C3C', lineHeight:1, marginBottom:12 }}>
-              YOU DIED
+
+          <div className="cinzel" style={{ textAlign:'center', padding:'0 24px', maxWidth:400, width:'100%' }}>
+            <div style={{ fontSize:11, color:'#E74C3C44', letterSpacing:8, marginBottom:16 }}>SYSTEM ALERT</div>
+            <div style={{ fontSize:64, marginBottom:6 }}>💀</div>
+            <div style={{ fontSize:36, fontWeight:900, color:'var(--crimson)',
+              textShadow:'0 0 30px #E74C3C, 0 0 60px #E74C3C', lineHeight:1, marginBottom:10 }}>
+              HP REACHED 0
             </div>
-            <div style={{ fontSize:16, color:'#fff', marginBottom:8 }}>HP reached 0</div>
-            <div style={{ fontSize:13, color:'#E74C3C88', marginBottom:32, lineHeight:1.8 }}>
-              The Shadow System has judged you.<br/>
-              All progress has been erased.<br/>
-              Rise again — if you dare.
+            <div style={{ fontSize:13, color:'rgba(231,76,60,0.7)', marginBottom:6, lineHeight:1.7 }}>
+              The Shadow System demands a price.<br/>
+              Choose your fate, Hunter.
             </div>
-            <button onClick={handleDeath} style={{
-              padding:'16px 40px', borderRadius:8, cursor:'pointer',
-              background:'rgba(231,76,60,0.15)', border:'2px solid var(--crimson)',
-              color:'var(--crimson)', fontFamily:'Cinzel,serif', fontSize:14,
-              letterSpacing:3, boxShadow:'0 0 20px rgba(231,76,60,0.3)'
+
+            {/* Warning box */}
+            <div style={{
+              margin:'16px 0', padding:'14px 16px', borderRadius:10,
+              background:'rgba(231,76,60,0.08)', border:'2px solid rgba(231,76,60,0.4)',
+              boxShadow:'0 0 20px rgba(231,76,60,0.15)',
             }}>
-              ⚔️ RISE AGAIN
-            </button>
+              <div style={{ fontSize:10, color:'var(--crimson)', letterSpacing:3, marginBottom:8 }}>⚠️ WARNING — IRREVERSIBLE ACTION</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.7 }}>
+                All progress will be affected by your choice.<br/>
+                There is no going back once you decide.
+              </div>
+            </div>
+
+            {/* Rank context */}
+            {(() => {
+              const rankOrder = ['E','D','C','B','A','S','MONARCH'];
+              const curIdx = rankOrder.indexOf(state.hunter.rank);
+              const newIdx = Math.max(0, curIdx - 2);
+              const newRank = rankOrder[newIdx];
+              const curColor = RANK_COLORS[state.hunter.rank] || '#6a7a9a';
+              const newColor = RANK_COLORS[newRank] || '#6a7a9a';
+              return (
+                <div style={{ display:'flex', gap:12, marginBottom:20 }}>
+                  {/* Option A: Survive */}
+                  <button onClick={handleDemote} style={{
+                    flex:1, padding:'16px 12px', borderRadius:10, cursor:'pointer',
+                    background:'rgba(79,195,247,0.06)', border:'2px solid rgba(79,195,247,0.4)',
+                    color:'var(--mana)', transition:'all 0.2s', textAlign:'center',
+                  }}
+                    onMouseEnter={e=>{e.currentTarget.style.background='rgba(79,195,247,0.15)';e.currentTarget.style.boxShadow='0 0 20px rgba(79,195,247,0.3)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.background='rgba(79,195,247,0.06)';e.currentTarget.style.boxShadow='none';}}
+                  >
+                    <div style={{ fontSize:22, marginBottom:6 }}>⚔️</div>
+                    <div className="cinzel" style={{ fontSize:13, letterSpacing:1, marginBottom:8 }}>ENDURE THE FALL</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
+                      Demoted by 2 ranks<br/>
+                      <span style={{ color:curColor }}>{state.hunter.rank}</span>
+                      <span style={{ color:'var(--text-dim)', margin:'0 6px' }}>→</span>
+                      <span style={{ color:newColor }}>{newRank}</span>
+                    </div>
+                    <div style={{ marginTop:8, fontSize:10, color:'rgba(231,76,60,0.7)', lineHeight:1.5 }}>
+                      −50% XP · −50% Coins<br/>
+                      −30% Stats · HP: 20%<br/>
+                      Custom quests preserved
+                    </div>
+                  </button>
+
+                  {/* Option B: Full Wipe */}
+                  <button onClick={handleDeath} style={{
+                    flex:1, padding:'16px 12px', borderRadius:10, cursor:'pointer',
+                    background:'rgba(231,76,60,0.06)', border:'2px solid rgba(231,76,60,0.4)',
+                    color:'var(--crimson)', transition:'all 0.2s', textAlign:'center',
+                  }}
+                    onMouseEnter={e=>{e.currentTarget.style.background='rgba(231,76,60,0.15)';e.currentTarget.style.boxShadow='0 0 20px rgba(231,76,60,0.3)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.background='rgba(231,76,60,0.06)';e.currentTarget.style.boxShadow='none';}}
+                  >
+                    <div style={{ fontSize:22, marginBottom:6 }}>☠️</div>
+                    <div className="cinzel" style={{ fontSize:13, letterSpacing:1, marginBottom:8 }}>FULL WIPE</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
+                      Complete reset<br/>
+                      All data erased
+                    </div>
+                    <div style={{ marginTop:8, fontSize:10, color:'rgba(231,76,60,0.7)', lineHeight:1.5 }}>
+                      −ALL XP &amp; Level<br/>
+                      −ALL Progress<br/>
+                      Start from zero
+                    </div>
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -6664,6 +8120,42 @@ export default function App() {
           showNotif={showNotif}
           applyPenalty={applyPenalty}
           onClose={() => setShowMorningCheckin(false)}
+        />
+      )}
+
+      {/* Boss Fight */}
+      {showBoss && (
+        <BossFightOverlay
+          boss={showBoss}
+          onDefeat={() => {
+            addXP(showBoss.xpReward, 'boss');
+            dispatch({ type:'DEFEAT_BOSS', payload: showBoss.rankTarget });
+            showNotif(`💥 BOSS DEFEATED · +${showBoss.xpReward.toLocaleString()} XP`);
+            setShowBoss(null);
+          }}
+          onFlee={() => setShowBoss(null)}
+        />
+      )}
+
+      {/* System Voice */}
+      {showSystemVoice && (
+        <SystemVoiceOverlay
+          message={showSystemVoice}
+          onDismiss={() => { dispatch({ type:'UPDATE_ACTIVITY' }); setShowSystemVoice(null); }}
+        />
+      )}
+
+      {/* Reflection Modal */}
+      {pendingReflection && (
+        <ReflectionModal
+          questName={pendingReflection}
+          onSave={(text) => {
+            dispatch({ type:'ADD_REFLECTION', payload:{ questName: pendingReflection, text } });
+            addXP(50, 'reflection');
+            showNotif('💭 REFLECTION ARCHIVED · +50 XP');
+            setPendingReflection(null);
+          }}
+          onSkip={() => setPendingReflection(null)}
         />
       )}
     </>
