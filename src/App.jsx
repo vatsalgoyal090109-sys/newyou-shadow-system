@@ -791,6 +791,7 @@ const buildInitialState = () => ({
   oath: { text:'', lockedAt:null, completed:false },
   bossDefeated: [],   // array of rank names boss was defeated for
   bossDungeon: {},    // { [rank]: { hp, attackPoints, phase, playerHp } }
+  activityLog: [],    // [{ id, type, label, detail, xp, ts }]
   lastActivity: null, // timestamp of last user action
   weeklyReviews: [],  // [{ weekId, highlights, lowlights, focusNext, letter }]
 });
@@ -960,18 +961,19 @@ function reducer(state, action) {
       return { ...state, antiTodo };
     }
     case 'APPLY_PENALTY': {
-      // Deduct 0.5x of task XP from totalXP, and reduce HP based on task size
-      const { xp } = action.payload;
+      const { xp, reason } = action.payload;
       const deduction = Math.round(xp * 0.5);
-      const hpLoss = Math.floor(xp / 3000) * 5 || 1; // -5 HP per 3000 XP task, min 1
+      const hpLoss = Math.floor(xp / 3000) * 5 || 1;
       const currentHp = state.hunter.hp ?? state.hunter.maxHp ?? 100;
       const newHp = Math.max(0, currentHp - hpLoss);
       const newTotalXP = Math.max(0, (state.hunter.totalXP || 0) - deduction);
       const isDead = newHp <= 0;
+      const actP = { type:'penalty', category:'penalty', label:'⚠️ Penalty Applied', detail: reason || 'Failed task', xp: -deduction };
       return {
         ...state,
         hunter: { ...state.hunter, totalXP: newTotalXP, hp: newHp },
         _penaltyData: { xpLost: deduction, hpLost: hpLoss, isDead },
+        activityLog: [{ id:Date.now()+'_pen', ts:Date.now(), ...actP }, ...(state.activityLog||[]).slice(0,499)],
       };
     }
     case 'HEAL_HP': {
@@ -985,6 +987,10 @@ function reducer(state, action) {
     case 'EQUIP_REWARD': {
       const { type, value } = action.payload;
       return { ...state, hunter: { ...state.hunter, [`equipped${type}`]: value } };
+    }
+    case 'LOG_ACTIVITY': {
+      const entry = { id: Date.now() + '_' + Math.random().toString(36).slice(2,6), ts: Date.now(), ...action.payload };
+      return { ...state, activityLog: [entry, ...(state.activityLog||[]).slice(0, 499)] };
     }
     case 'LOG_DAILY_XP': {
       const today = todayStr();
@@ -1022,7 +1028,9 @@ function reducer(state, action) {
       return { ...state, oath: { text:'', lockedAt:null, completed:false } };
     }
     case 'DEFEAT_BOSS': {
-      return { ...state, bossDefeated: [...(state.bossDefeated||[]), action.payload], lastActivity: Date.now() };
+      const actB = { type:'boss_defeated', category:'dungeon', label:'💥 Boss Defeated', detail: BOSS_DATA[action.payload]?.name || action.payload, xp: BOSS_DATA[action.payload]?.xpReward || 0 };
+      return { ...state, bossDefeated: [...(state.bossDefeated||[]), action.payload], lastActivity: Date.now(),
+        activityLog: [{ id:Date.now()+'_boss', ts:Date.now(), ...actB }, ...(state.activityLog||[]).slice(0,499)] };
     }
     case 'EARN_ATTACK_POINTS': {
       const { rank, amount } = action.payload;
@@ -1178,6 +1186,9 @@ function reducer(state, action) {
       if (milestone) {
         newState = { ...newState, _streakMilestone: { ...milestone, streak: newStreak, questName: quest.name, type:'daily' } };
       }
+      // Activity log
+      const actEntry = { type:'quest_complete', category:'daily', label:`✅ Daily Quest Complete`, detail: quest.name, xp: quest.xp, streak: newStreak };
+      newState = { ...newState, activityLog: [{ id:Date.now()+'_qdaily', ts:Date.now(), ...actEntry }, ...(newState.activityLog||[]).slice(0,499)] };
       return newState;
     }
     case 'COMPLETE_WEEKLY_QUEST': {
@@ -1208,6 +1219,8 @@ function reducer(state, action) {
       if (milestone) {
         newState = { ...newState, _streakMilestone: { ...milestone, streak: newStreak, questName: quest.name, type:'weekly' } };
       }
+      const actEntryW = { type:'quest_complete', category:'weekly', label:'📅 Weekly Quest Complete', detail: quest.name, xp: quest.xp, streak: newStreak };
+      newState = { ...newState, activityLog: [{ id:Date.now()+'_qweekly', ts:Date.now(), ...actEntryW }, ...(newState.activityLog||[]).slice(0,499)] };
       return newState;
     }
     case 'ADD_MAIN_QUEST': {
@@ -1227,6 +1240,8 @@ function reducer(state, action) {
         const reward = state.customRewards?.find(r=>r.id===quest.rewardId);
         if (reward) newState = { ...newState, collection: [...(newState.collection||[]), { ...reward, acquiredAt:Date.now(), source:'quest_reward', questName:quest.name }] };
       }
+      const actM = { type:'quest_complete', category:'main', label:'👑 Main Quest Complete', detail: quest?.name || '', xp: quest?.xp || 0 };
+      newState = { ...newState, activityLog: [{ id:Date.now()+'_qmain', ts:Date.now(), ...actM }, ...(newState.activityLog||[]).slice(0,499)] };
       return newState;
     }
     case 'ADD_DAILY_QUEST': {
@@ -1289,7 +1304,6 @@ function reducer(state, action) {
       const quest = (state.quests.side||[]).find(q=>q.id===action.payload);
       const side = (state.quests.side||[]).map(q=>q.id===action.payload ? {...q, completed:true, completedAt:Date.now()} : q);
       let newState = { ...state, quests:{...state.quests, side} };
-      // Award all selected stats
       if (quest?.statRewards) {
         quest.statRewards.forEach(sr => {
           if (sr.stat && sr.amount > 0) {
@@ -1297,6 +1311,8 @@ function reducer(state, action) {
           }
         });
       }
+      const actS = { type:'quest_complete', category:'side', label:'🎯 Side Quest Complete', detail: quest?.name || '', xp: quest?.xp || 0 };
+      newState = { ...newState, activityLog: [{ id:Date.now()+'_qside', ts:Date.now(), ...actS }, ...(newState.activityLog||[]).slice(0,499)] };
       return newState;
     }
     case 'DELETE_SIDE_QUEST': {
@@ -1309,10 +1325,12 @@ function reducer(state, action) {
       let newLevel = muscle.level;
       const needed = MUSCLE_XP_PER_LEVEL(newLevel);
       if (newXp >= needed) { newXp -= needed; newLevel++; }
+      const actW = { type:'workout', category:'health', label:'💪 Workout Logged', detail: muscleName, xp: xpGain };
       return {
         ...state,
         muscles:{ ...state.muscles, [muscleName]:{ level:newLevel, xp:newXp, trained:muscle.trained+1 } },
-        workouts:[ { id:Date.now()+'', muscleName, ...entry, date:Date.now() }, ...state.workouts.slice(0,99) ]
+        workouts:[ { id:Date.now()+'', muscleName, ...entry, date:Date.now() }, ...state.workouts.slice(0,99) ],
+        activityLog: [{ id:Date.now()+'_wkt', ts:Date.now(), ...actW }, ...(state.activityLog||[]).slice(0,499)]
       };
     }
     case 'ADD_SUBJECT': {
@@ -1326,9 +1344,11 @@ function reducer(state, action) {
       let newLevel = sub.level;
       while (newXp >= (newLevel+1)*500) { newXp -= (newLevel+1)*500; newLevel++; }
       const updated = { ...sub, xp:newXp, level:newLevel, hoursStudied:sub.hoursStudied + minutes/60, lastStudied:Date.now() };
+      const actSt = { type:'study', category:'mind', label:'📚 Study Session', detail: `${subjectName} — ${minutes} min`, xp: minutes * 2 };
       return {
         ...state, subjects:{ ...state.subjects, [subjectName]: updated },
-        studySessions:[ { id:Date.now()+'', subjectName, minutes, notes, date:Date.now() }, ...state.studySessions.slice(0,99) ]
+        studySessions:[ { id:Date.now()+'', subjectName, minutes, notes, date:Date.now() }, ...state.studySessions.slice(0,99) ],
+        activityLog: [{ id:Date.now()+'_study', ts:Date.now(), ...actSt }, ...(state.activityLog||[]).slice(0,499)]
       };
     }
     case 'ADD_SKILL': {
@@ -1338,10 +1358,14 @@ function reducer(state, action) {
     case 'LOG_SKILL': {
       const { skillName, minutes, rating } = action.payload;
       const sk = state.skills[skillName];
-      let newXp = sk.xp + Math.round((minutes/30)*75);
+      const xpGainSk = Math.round((minutes/30)*75);
+      let newXp = sk.xp + xpGainSk;
       let newLevel = sk.level;
       while (newXp >= (newLevel+1)*300) { newXp -= (newLevel+1)*300; newLevel++; }
-      return { ...state, skills:{ ...state.skills, [skillName]:{ ...sk, xp:newXp, level:newLevel, practiced:sk.practiced+1 } } };
+      const actSk = { type:'skill', category:'mind', label:'⭐ Skill Practiced', detail: `${skillName} — ${minutes} min`, xp: xpGainSk };
+      return { ...state, skills:{ ...state.skills, [skillName]:{ ...sk, xp:newXp, level:newLevel, practiced:sk.practiced+1 } },
+        activityLog: [{ id:Date.now()+'_skill', ts:Date.now(), ...actSk }, ...(state.activityLog||[]).slice(0,499)]
+      };
     }
     case 'ADD_HABIT': {
       const h = { id:Date.now()+'', ...action.payload, streak:0, longestStreak:0, completedDates:[] };
@@ -1349,6 +1373,7 @@ function reducer(state, action) {
     }
     case 'COMPLETE_HABIT': {
       const today = todayStr();
+      const habitObj = state.habits.find(h => h.id === action.payload);
       const habits = state.habits.map(h => {
         if (h.id !== action.payload) return h;
         if (h.completedDates.includes(today)) return h;
@@ -1357,7 +1382,8 @@ function reducer(state, action) {
         const streak = h.completedDates.includes(yesterday) ? h.streak+1 : 1;
         return { ...h, completedDates:dates, streak, longestStreak:Math.max(h.longestStreak, streak) };
       });
-      return { ...state, habits };
+      const actH = { type:'habit_complete', category:'habit', label:'🔥 Habit Completed', detail: habitObj?.name || '', xp: habitObj?.xpPerCompletion || 0 };
+      return { ...state, habits, activityLog: [{ id:Date.now()+'_habit', ts:Date.now(), ...actH }, ...(state.activityLog||[]).slice(0,499)] };
     }
     case 'DELETE_HABIT': {
       return { ...state, habits: state.habits.filter(h => h.id !== action.payload) };
@@ -7041,9 +7067,135 @@ function BgMusicPlayer({ state, dispatch }) {
 }
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG SCREEN (embedded in Settings)
+// ─────────────────────────────────────────────────────────────────────────────
+const ACTIVITY_TYPE_META = {
+  quest_complete: { color:'#2ECC71', bg:'rgba(46,204,113,0.08)', border:'rgba(46,204,113,0.2)' },
+  habit_complete: { color:'#F39C12', bg:'rgba(243,156,18,0.08)', border:'rgba(243,156,18,0.2)' },
+  penalty:        { color:'#E74C3C', bg:'rgba(231,76,60,0.08)',  border:'rgba(231,76,60,0.2)'  },
+  workout:        { color:'#4FC3F7', bg:'rgba(79,195,247,0.08)', border:'rgba(79,195,247,0.2)' },
+  study:          { color:'#9B59B6', bg:'rgba(155,89,182,0.08)', border:'rgba(155,89,182,0.2)' },
+  skill:          { color:'#FF69B4', bg:'rgba(255,105,180,0.08)','border':'rgba(255,105,180,0.2)' },
+  boss_defeated:  { color:'#FFD700', bg:'rgba(255,215,0,0.08)',  border:'rgba(255,215,0,0.2)'  },
+};
+const ACTIVITY_CATEGORIES = [
+  { k:'all',     l:'All',      emoji:'📋' },
+  { k:'daily',   l:'Daily',    emoji:'⚡' },
+  { k:'weekly',  l:'Weekly',   emoji:'📅' },
+  { k:'main',    l:'Main',     emoji:'👑' },
+  { k:'side',    l:'Side',     emoji:'🎯' },
+  { k:'habit',   l:'Habits',   emoji:'🔥' },
+  { k:'penalty', l:'Penalties',emoji:'⚠️' },
+  { k:'health',  l:'Health',   emoji:'💪' },
+  { k:'mind',    l:'Mind',     emoji:'📚' },
+  { k:'dungeon', l:'Dungeon',  emoji:'⚔️' },
+];
+
+function ActivityLogScreen({ state }) {
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const log = state.activityLog || [];
+
+  const filtered = log.filter(e => {
+    if (filter !== 'all' && e.category !== filter) return false;
+    if (search && !e.label?.toLowerCase().includes(search.toLowerCase()) && !e.detail?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const totalXP = log.reduce((s,e) => s + (e.xp || 0), 0);
+  const completed = log.filter(e => e.type === 'quest_complete' || e.type === 'habit_complete').length;
+  const penalties = log.filter(e => e.type === 'penalty').length;
+  const bosses = log.filter(e => e.type === 'boss_defeated').length;
+
+  const formatTime = (ts) => {
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    if (diff < 604800000) return `${Math.floor(diff/86400000)}d ago`;
+    return d.toLocaleDateString();
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+      {/* Summary stats */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
+        {[
+          { l:'TOTAL', v:log.length,    c:'var(--mana)'   },
+          { l:'DONE',  v:completed,     c:'#2ECC71'       },
+          { l:'FAILS', v:penalties,     c:'var(--crimson)'},
+          { l:'BOSSES',v:bosses,        c:'#FFD700'       },
+        ].map(s=>(
+          <div key={s.l} className="panel" style={{ padding:'8px 6px', textAlign:'center' }}>
+            <div className="cinzel" style={{ fontSize:15, color:s.c }}>{s.v}</div>
+            <div style={{ fontSize:8, color:'var(--text-dim)', letterSpacing:1 }}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <input className="input-dark" value={search} onChange={e=>setSearch(e.target.value)}
+        placeholder="Search activities..." style={{ marginBottom:8, fontSize:12 }}/>
+
+      {/* Category filter */}
+      <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:6, marginBottom:10 }}>
+        {ACTIVITY_CATEGORIES.map(c=>(
+          <button key={c.k} onClick={()=>setFilter(c.k)} style={{
+            flexShrink:0, padding:'4px 10px', fontSize:9, borderRadius:5, cursor:'pointer',
+            border: filter===c.k ? '1px solid var(--mana)' : '1px solid var(--border)',
+            background: filter===c.k ? 'rgba(79,195,247,0.15)' : 'transparent',
+            color: filter===c.k ? 'var(--mana)' : 'var(--text-dim)', fontFamily:'Cinzel,serif'
+          }}>{c.emoji} {c.l}</button>
+        ))}
+      </div>
+
+      {/* Log entries */}
+      {filtered.length === 0 && (
+        <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-dim)', fontSize:12 }}>
+          {log.length === 0 ? 'No activity yet. Complete quests and habits to build your log.' : 'No entries match this filter.'}
+        </div>
+      )}
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+        {filtered.slice(0, 100).map(e => {
+          const meta = ACTIVITY_TYPE_META[e.type] || { color:'var(--text-dim)', bg:'rgba(255,255,255,0.03)', border:'rgba(255,255,255,0.08)' };
+          return (
+            <div key={e.id} style={{
+              display:'flex', alignItems:'flex-start', gap:10,
+              padding:'9px 12px', borderRadius:8,
+              background: meta.bg, border:`1px solid ${meta.border}`,
+            }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, color: meta.color, fontFamily:'Cinzel,serif', marginBottom:2 }}>{e.label}</div>
+                {e.detail && <div style={{ fontSize:11, color:'var(--text)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.detail}</div>}
+              </div>
+              <div style={{ textAlign:'right', flexShrink:0 }}>
+                {e.xp !== 0 && e.xp !== undefined && (
+                  <div className="cinzel" style={{ fontSize:11, color: e.xp > 0 ? '#2ECC71' : 'var(--crimson)' }}>
+                    {e.xp > 0 ? `+${e.xp}` : e.xp} XP
+                  </div>
+                )}
+                <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>{formatTime(e.ts)}</div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length > 100 && (
+          <div style={{ textAlign:'center', fontSize:10, color:'var(--text-dim)', padding:8 }}>
+            Showing 100 of {filtered.length} entries
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SettingsScreen({ state, dispatch, showNotif, sfx }) {
   const [notifTime, setNotifTime] = useState(state.notifications?.time || '08:00');
   const soundEnabled = state.soundEnabled !== false;
+  const [settingsTab, setSettingsTab] = useState('general');
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -7052,72 +7204,49 @@ function SettingsScreen({ state, dispatch, showNotif, sfx }) {
   const [copied, setCopied] = useState(false);
 
   const exportData = () => {
-    const json = JSON.stringify(state, null, 2);
+    // Build comprehensive export including all user data
+    const exportPayload = {
+      _meta: {
+        exportedAt: new Date().toISOString(),
+        appVersion: 'NEW YOU v2.0',
+        hunterName: state.hunter.name,
+        rank: state.hunter.rank,
+        level: state.hunter.level,
+      },
+      // Full state
+      ...state,
+      // Explicit summary for readability
+      _summary: {
+        totalXP: state.hunter.totalXP,
+        level: state.hunter.level,
+        rank: state.hunter.rank,
+        daysActive: state.hunter.createdAt ? Math.floor((Date.now()-state.hunter.createdAt)/86400000) : 0,
+        questsCompleted: (state.activityLog||[]).filter(e=>e.type==='quest_complete').length,
+        habitsCompleted: (state.activityLog||[]).filter(e=>e.type==='habit_complete').length,
+        penaltiesReceived: (state.activityLog||[]).filter(e=>e.type==='penalty').length,
+        bossesDefeated: (state.bossDefeated||[]).length,
+        journalEntries: (state.journal||[]).length,
+        workoutSessions: (state.workouts||[]).length,
+        studySessions: (state.studySessions||[]).length,
+        habitsTracked: (state.habits||[]).length,
+        coinsEarned: state.hunter.coins || 0,
+        activitiesLogged: (state.activityLog||[]).length,
+      },
+    };
+    const json = JSON.stringify(exportPayload, null, 2);
     setExportText(json);
     setShowExportModal(true);
     setCopied(false);
-    // Also try native download as fallback for browsers
     try {
       const blob = new Blob([json], { type:'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `NEWYOU_backup_${new Date().toISOString().slice(0,10)}.json`;
+      a.download = `NEWYOU_${state.hunter.name}_${new Date().toISOString().slice(0,10)}.json`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch(e) {}
-  };
-
-  const copyToClipboard = () => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(exportText).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        });
-      } else {
-        // Fallback for older WebViews
-        const ta = document.createElement('textarea');
-        ta.value = exportText;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    } catch(e) { showNotif('❌ COPY FAILED — Select text manually'); }
-  };
-
-  const importData = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        dispatch({ type:'LOAD_STATE', payload:data });
-        showNotif('✅ DATA IMPORTED');
-      } catch(err) {
-        showNotif('❌ INVALID FILE');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const importFromText = () => {
-    try {
-      const data = JSON.parse(importText.trim());
-      dispatch({ type:'LOAD_STATE', payload:data });
-      setShowImportModal(false);
-      setImportText('');
-      showNotif('✅ PROGRESS RESTORED');
-    } catch(err) {
-      showNotif('❌ INVALID DATA — Check your backup text');
-    }
   };
 
   const requestNotifications = async () => {
@@ -7138,13 +7267,31 @@ function SettingsScreen({ state, dispatch, showNotif, sfx }) {
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-      <div style={{ padding:'12px 16px' }}>
-        <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3, marginBottom:4 }}>SYSTEM SETTINGS</div>
+      <div style={{ padding:'12px 16px 0' }}>
+        <div className="cinzel" style={{ fontSize:18, color:'var(--mana)', letterSpacing:3, marginBottom:10 }}>SYSTEM SETTINGS</div>
+        {/* Sub-tabs */}
+        <div style={{ display:'flex', gap:5, marginBottom:0 }}>
+          {[
+            { k:'general',  l:'General',  emoji:'⚙️' },
+            { k:'activity', l:'Activity', emoji:'📋' },
+            { k:'data',     l:'Data',     emoji:'💾' },
+          ].map(t=>(
+            <button key={t.k} onClick={()=>setSettingsTab(t.k)} style={{
+              flex:1, padding:'7px 4px', fontSize:10, borderRadius:'6px 6px 0 0', cursor:'pointer',
+              border: settingsTab===t.k ? '1px solid var(--mana)' : '1px solid var(--border)',
+              borderBottom: settingsTab===t.k ? '1px solid var(--bg)' : '1px solid var(--border)',
+              background: settingsTab===t.k ? 'rgba(79,195,247,0.1)' : 'transparent',
+              color: settingsTab===t.k ? 'var(--mana)' : 'var(--text-dim)', fontFamily:'Cinzel,serif',
+              marginBottom: settingsTab===t.k ? -1 : 0,
+            }}>{t.emoji} {t.l}</button>
+          ))}
+        </div>
       </div>
 
-      <div className="scrollable" style={{ flex:1, padding:'0 16px 24px' }}>
+      <div className="scrollable" style={{ flex:1, padding:'12px 16px 24px', borderTop:'1px solid var(--border)' }}>
 
-        {/* Theme */}
+        {/* ── GENERAL TAB ── */}
+        {settingsTab === 'general' && (<>
         <div className="panel" style={{ padding:16, marginBottom:12 }}>
           <div className="cinzel" style={{ fontSize:11, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>🎨 APPEARANCE</div>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -7251,94 +7398,6 @@ function SettingsScreen({ state, dispatch, showNotif, sfx }) {
           </div>
         </div>
 
-        {/* Data Export/Import */}
-        <div className="panel" style={{ padding:16, marginBottom:12 }}>
-          <div className="cinzel" style={{ fontSize:11, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>💾 DATA MANAGEMENT</div>
-
-          <div style={{ marginBottom:12 }}>
-            <div style={{ fontSize:13, color:'var(--text)', marginBottom:4 }}>Export Backup</div>
-            <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10 }}>Save your progress as text. Copy it and store it somewhere safe.</div>
-            <button className="btn-mana" style={{ width:'100%' }} onClick={exportData}>
-              📤 EXPORT PROGRESS
-            </button>
-          </div>
-
-          <div style={{ borderTop:'1px solid var(--border)', paddingTop:12 }}>
-            <div style={{ fontSize:13, color:'var(--text)', marginBottom:4 }}>Import Backup</div>
-            <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10 }}>Paste your backup text to restore progress. ⚠️ Overwrites current data.</div>
-            <button style={{
-              display:'block', width:'100%', padding:'8px 16px', textAlign:'center',
-              background:'rgba(155,89,182,0.15)', border:'1px solid var(--violet)',
-              borderRadius:6, color:'var(--violet)', fontSize:12, cursor:'pointer',
-              fontFamily:'Cinzel,serif', letterSpacing:1
-            }} onClick={()=>{ setImportText(''); setShowImportModal(true); }}>
-              📥 IMPORT BACKUP
-            </button>
-          </div>
-        </div>
-
-        {/* Export Modal */}
-        {showExportModal && (
-          <div className="modal-overlay" onClick={()=>setShowExportModal(false)}>
-            <div className="modal-box" onClick={e=>e.stopPropagation()} style={{ maxHeight:'80vh', display:'flex', flexDirection:'column' }}>
-              <div className="cinzel" style={{ color:'var(--mana)', fontSize:16, marginBottom:8 }}>📤 YOUR BACKUP</div>
-              <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:12 }}>
-                Tap <strong style={{color:'var(--mana)'}}>COPY ALL</strong> then paste it in Notes, Google Drive, or anywhere safe.
-              </div>
-              <textarea
-                readOnly
-                value={exportText}
-                style={{
-                  flex:1, minHeight:180, maxHeight:260, background:'rgba(0,0,0,0.4)',
-                  border:'1px solid var(--border)', borderRadius:6, color:'var(--text-dim)',
-                  fontSize:10, padding:10, fontFamily:'monospace', resize:'none',
-                  marginBottom:12
-                }}
-                onFocus={e=>e.target.select()}
-              />
-              <div style={{ display:'flex', gap:8 }}>
-                <button className="btn-mana" style={{ flex:1, fontSize:13 }} onClick={copyToClipboard}>
-                  {copied ? '✅ COPIED!' : '📋 COPY ALL'}
-                </button>
-                <button className="btn-danger" style={{ flex:1 }} onClick={()=>setShowExportModal(false)}>CLOSE</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Import Modal */}
-        {showImportModal && (
-          <div className="modal-overlay" onClick={()=>setShowImportModal(false)}>
-            <div className="modal-box" onClick={e=>e.stopPropagation()} style={{ maxHeight:'80vh', display:'flex', flexDirection:'column' }}>
-              <div className="cinzel" style={{ color:'var(--violet)', fontSize:16, marginBottom:8 }}>📥 RESTORE BACKUP</div>
-              <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:12 }}>
-                Paste your previously exported backup text below.
-              </div>
-              <textarea
-                value={importText}
-                onChange={e=>setImportText(e.target.value)}
-                placeholder='Paste your backup JSON here...'
-                style={{
-                  flex:1, minHeight:200, maxHeight:280, background:'rgba(0,0,0,0.4)',
-                  border:'1px solid var(--border)', borderRadius:6, color:'var(--text)',
-                  fontSize:11, padding:10, fontFamily:'monospace', resize:'none',
-                  marginBottom:12
-                }}
-              />
-              <div style={{ display:'flex', gap:8 }}>
-                <button style={{
-                  flex:1, padding:'11px', borderRadius:6, cursor:'pointer',
-                  background:'rgba(155,89,182,0.15)', border:'1px solid var(--violet)',
-                  color:'var(--violet)', fontFamily:'Cinzel,serif', fontSize:12, letterSpacing:1
-                }} onClick={importFromText}>
-                  ✅ RESTORE
-                </button>
-                <button className="btn-danger" style={{ flex:1 }} onClick={()=>setShowImportModal(false)}>CANCEL</button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Public Oath */}
         <div className="panel" style={{ padding:16, marginBottom:16 }}>
           <div className="cinzel" style={{ fontSize:12, color:'var(--violet)', letterSpacing:3, marginBottom:12 }}>🔒 PUBLIC OATH</div>
@@ -7361,9 +7420,109 @@ function SettingsScreen({ state, dispatch, showNotif, sfx }) {
           <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:8, lineHeight:1.6 }}>
             Hunter: <span style={{ color:'var(--text)' }}>{state.hunter.name}</span><br/>
             Days Active: <span style={{ color:'var(--mana)' }}>{state.hunter.createdAt ? Math.floor((Date.now()-state.hunter.createdAt)/86400000) : 0}</span><br/>
-            Journal Entries: <span style={{ color:'var(--violet)' }}>{state.journal?.length || 0}</span>
+            Journal Entries: <span style={{ color:'var(--violet)' }}>{state.journal?.length || 0}</span><br/>
+            Activities Logged: <span style={{ color:'var(--gold)' }}>{(state.activityLog||[]).length}</span>
           </div>
         </div>
+        </>)}
+
+        {/* ── ACTIVITY TAB ── */}
+        {settingsTab === 'activity' && (
+          <div>
+            <div className="cinzel" style={{ fontSize:12, color:'var(--mana)', letterSpacing:3, marginBottom:12 }}>📋 ACTIVITY LOG</div>
+            <ActivityLogScreen state={state}/>
+          </div>
+        )}
+
+        {/* ── DATA TAB ── */}
+        {settingsTab === 'data' && (<>
+          <div className="panel" style={{ padding:16, marginBottom:12 }}>
+            <div className="cinzel" style={{ fontSize:11, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>📤 EXPORT</div>
+            <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10, lineHeight:1.6 }}>
+              Downloads a complete JSON backup of <span style={{ color:'var(--mana)' }}>all your data</span> — hunter profile, quests, habits, journal, activity log, boss dungeon, stats, collections, and settings.
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
+              {[
+                { l:'XP', v:(state.hunter.totalXP||0).toLocaleString(), c:'var(--gold)' },
+                { l:'Activities', v:(state.activityLog||[]).length, c:'var(--mana)' },
+                { l:'Journal', v:(state.journal||[]).length, c:'var(--violet)' },
+                { l:'Workouts', v:(state.workouts||[]).length, c:'#2ECC71' },
+              ].map(s=>(
+                <div key={s.l} style={{ padding:'6px 10px', background:'rgba(255,255,255,0.03)', borderRadius:6, border:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="cinzel" style={{ fontSize:13, color:s.c }}>{s.v}</div>
+                  <div style={{ fontSize:9, color:'var(--text-dim)' }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn-mana" style={{ width:'100%' }} onClick={exportData}>
+              📤 EXPORT ALL DATA
+            </button>
+          </div>
+
+          <div className="panel" style={{ padding:16, marginBottom:12 }}>
+            <div className="cinzel" style={{ fontSize:11, color:'var(--text-dim)', letterSpacing:3, marginBottom:12 }}>📥 IMPORT</div>
+            <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:10 }}>Restore from a backup file. ⚠️ Overwrites all current data.</div>
+            <button style={{
+              display:'block', width:'100%', padding:'8px 16px', textAlign:'center',
+              background:'rgba(155,89,182,0.15)', border:'1px solid var(--violet)',
+              borderRadius:6, color:'var(--violet)', fontSize:12, cursor:'pointer',
+              fontFamily:'Cinzel,serif', letterSpacing:1
+            }} onClick={()=>{ setImportText(''); setShowImportModal(true); }}>
+              📥 IMPORT BACKUP
+            </button>
+          </div>
+        </>)}
+
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="modal-overlay" onClick={()=>setShowExportModal(false)}>
+            <div className="modal-box" onClick={e=>e.stopPropagation()} style={{ maxHeight:'80vh', display:'flex', flexDirection:'column' }}>
+              <div className="cinzel" style={{ color:'var(--mana)', fontSize:16, marginBottom:8 }}>📤 YOUR BACKUP</div>
+              <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:12 }}>
+                Tap <strong style={{color:'var(--mana)'}}>COPY ALL</strong> then paste it somewhere safe, or use the downloaded file.
+              </div>
+              <textarea readOnly value={exportText} style={{
+                flex:1, minHeight:180, maxHeight:260, background:'rgba(0,0,0,0.4)',
+                border:'1px solid var(--border)', borderRadius:6, color:'var(--text-dim)',
+                fontSize:10, padding:10, fontFamily:'monospace', resize:'none', marginBottom:12
+              }} onFocus={e=>e.target.select()}/>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn-mana" style={{ flex:1, fontSize:13 }} onClick={()=>{
+                  try {
+                    if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(exportText).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);}); }
+                    else { const ta=document.createElement('textarea'); ta.value=exportText; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); setCopied(true); setTimeout(()=>setCopied(false),2000); }
+                  } catch(e){ showNotif('❌ COPY FAILED'); }
+                }}>{copied ? '✅ COPIED!' : '📋 COPY ALL'}</button>
+                <button className="btn-danger" style={{ flex:1 }} onClick={()=>setShowExportModal(false)}>CLOSE</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Import Modal */}
+        {showImportModal && (
+          <div className="modal-overlay" onClick={()=>setShowImportModal(false)}>
+            <div className="modal-box" onClick={e=>e.stopPropagation()} style={{ maxHeight:'80vh', display:'flex', flexDirection:'column' }}>
+              <div className="cinzel" style={{ color:'var(--violet)', fontSize:16, marginBottom:8 }}>📥 RESTORE BACKUP</div>
+              <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:12 }}>Paste your previously exported backup text below.</div>
+              <textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder='Paste your backup JSON here...' style={{
+                flex:1, minHeight:200, maxHeight:280, background:'rgba(0,0,0,0.4)',
+                border:'1px solid var(--border)', borderRadius:6, color:'var(--text)',
+                fontSize:11, padding:10, fontFamily:'monospace', resize:'none', marginBottom:12
+              }}/>
+              <div style={{ display:'flex', gap:8 }}>
+                <button style={{
+                  flex:1, padding:'11px', borderRadius:6, cursor:'pointer',
+                  background:'rgba(155,89,182,0.15)', border:'1px solid var(--violet)',
+                  color:'var(--violet)', fontFamily:'Cinzel,serif', fontSize:12, letterSpacing:1
+                }} onClick={()=>{
+                  try { const data=JSON.parse(importText.trim()); dispatch({type:'LOAD_STATE',payload:data}); setShowImportModal(false); setImportText(''); showNotif('✅ PROGRESS RESTORED'); } catch(e){ showNotif('❌ INVALID DATA'); }
+                }}>✅ RESTORE</button>
+                <button className="btn-danger" style={{ flex:1 }} onClick={()=>setShowImportModal(false)}>CANCEL</button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
